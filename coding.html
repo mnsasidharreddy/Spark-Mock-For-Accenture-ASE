@@ -40,6 +40,14 @@
         
         textarea { flex-grow: 1; background: var(--editor-bg); color: #000; border: none; padding: 15px; font-family: 'SFMono-Regular', Consolas, monospace; resize: none; outline: none; font-size: 14px; line-height: 1.6; }
         
+        /* VS Code-style indentation guides for Python */
+        textarea.python-mode {
+            background-image: repeating-linear-gradient(to right, transparent, transparent calc(4ch - 1px), #ebeef1 calc(4ch - 1px), #ebeef1 4ch);
+            background-size: 4ch 100%;
+            background-attachment: local;
+            background-origin: content-box;
+        }
+        
         .resource-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border: 1px solid var(--border); }
         .resource-table th, .resource-table td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; font-size: 12px; }
         .resource-table th { background: #f0f0f0; font-weight: 600; }
@@ -89,9 +97,9 @@
     <div class="logo-area">
         <div class="spark-logo">SPARK<span style="color:#007bff">.</span></div>
         <select id="mod-selector">
-            <option value="sql">Database (SQL)</option>
-            <option value="backend">Backend (DSA)</option>
-            <option value="frontend">Frontend (Web)</option>
+            <option value="sql">Database</option>
+            <option value="backend">Backend</option>
+            <option value="frontend">Frontend</option>
         </select>
     </div>
     <div id="timer">60:00</div>
@@ -164,7 +172,7 @@
 class SparkApp {
     constructor() {
         this.sessionId = this.generateSessionId();
-        this.currentModule = 'sql';
+        this.currentModule = null; // Prevent premature saving of state during init
         this.currentFile = 'html';
         this.timeRemaining = 3600; // 60 minutes
         this.timerInterval = null;
@@ -183,22 +191,22 @@ class SparkApp {
             sql: [
                 {
                     title: "Second Highest Salary",
-                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Staff</b></li><li>Find the person with the <b>second highest</b> salary</li><li>Show their name and salary</li></ul></div>`,
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Staff</b></li><li>Find the person with the <b>second highest</b> salary</li><li>Show their <b>Name</b> and <b>Salary</b></li></ul><p><b>Expected Columns:</b> Name, Salary</p></div>`,
                     refQuery: "select Name, Salary from Staff order by Salary desc limit 1 offset 1"
                 },
                 {
                     title: "Team Members",
-                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have two tables: <b>Users</b> and <b>Teams</b></li><li>Join them to find which team each user belongs to</li><li>Show the <b>UserName</b> and their <b>TeamName</b></li></ul></div>`,
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have two tables: <b>Users</b> and <b>Teams</b></li><li>Join them to find which team each user belongs to</li><li>Show the <b>UserName</b> and their <b>TeamName</b></li></ul><p><b>Expected Columns:</b> UserName, TeamName</p></div>`,
                     refQuery: "select UserName, TeamName from Users join Teams on Users.TeamID = Teams.TeamID"
                 },
                 {
                     title: "Inventory Alert",
-                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Inventory</b></li><li>Find all items where <b>Stock</b> is less than 20</li><li>Show the <b>ItemName</b> and <b>Stock</b> level</li></ul></div>`,
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Inventory</b></li><li>Find all items where <b>Stock</b> is less than 20</li><li>Show the <b>ItemName</b> and <b>Stock</b> level</li></ul><p><b>Expected Columns:</b> ItemName, Stock</p></div>`,
                     refQuery: "select ItemName, Stock from Inventory where Stock < 20"
                 },
                 {
                     title: "Big Sales",
-                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Sales</b></li><li>List all sales where the <b>Amount</b> is greater than 500</li><li>Order the results by <b>Amount</b> (Highest first)</li></ul></div>`,
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Sales</b></li><li>List all sales where the <b>Amount</b> is greater than 500</li><li>Order the results by <b>Amount</b> (Highest first)</li></ul><p><b>Expected Columns:</b> OrderID, Amount</p></div>`,
                     refQuery: "select OrderID, Amount from Sales where Amount > 500 order by Amount desc"
                 }
             ],
@@ -268,9 +276,9 @@ class SparkApp {
             ]
         };
 
-        // Select random indices for this session
+        // Select indices for this session (SQL is fixed as per request)
         this.selectedQuestions = {
-            sql: Math.floor(Math.random() * 4),
+            sql: 0,
             backend: Math.floor(Math.random() * 4),
             frontend: Math.floor(Math.random() * 4)
         };
@@ -401,6 +409,43 @@ class SparkApp {
             }
         });
 
+
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + "    " + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 4;
+                this.updateCurrentCode(editor.value);
+            } else if (e.key === 'Enter') {
+                const lang = document.getElementById('lang-selector').value;
+                const isPython = this.currentModule === 'backend' && lang === 'python';
+                
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                const value = editor.value;
+                const before = value.substring(0, start);
+                const lines = before.split('\n');
+                const lastLine = lines[lines.length - 1];
+                const match = lastLine.match(/^\s*/);
+                const indent = match ? match[0] : "";
+                
+                let extraIndent = "";
+                // Auto-indent after colon only in Python
+                if (isPython && lastLine.trim().endsWith(':')) {
+                    extraIndent = "    ";
+                }
+                
+                if (indent || extraIndent) {
+                    e.preventDefault();
+                    const newText = "\n" + indent + extraIndent;
+                    editor.value = before + newText + value.substring(end);
+                    editor.selectionStart = editor.selectionEnd = start + newText.length;
+                    this.updateCurrentCode(editor.value);
+                }
+            }
+        });
         document.getElementById('mod-selector').addEventListener('change', (e) => {
             this.confirmModuleSwitch(e.target.value);
         });
@@ -509,8 +554,18 @@ class SparkApp {
                         this.sessionData.backend = ""; // Will be reset in switchModule
                     }
 
-                    this.currentModule = data.currentModule;
-                    this.currentFile = data.currentFile;
+                    // Sanitize frontend: if it contains SQL placeholder or is malformed, reset to defaults
+                    const fe = this.sessionData.frontend;
+                    const sqlMarker = "--write your sql query below";
+                    if (typeof fe !== 'object' || 
+                        Object.values(fe).some(val => typeof val === 'string' && val.includes(sqlMarker))) {
+                        this.sessionData.frontend = {
+                            html: '<div class="container">\n  <h1 id="title">Instructions Followed</h1>\n  <button id="btn">Action Button</button>\n</div>',
+                            css: "/* Write your CSS here */\n.container { text-align: center; margin-top: 50px; padding: 20px; }\n#btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }",
+                            js: "// Write your JavaScript here\ndocument.getElementById('btn').onclick = () => {\n  // Add your logic here\n};"
+                        };
+                    }
+
                     this.timeRemaining = data.timeRemaining;
                     this.sectionsSaved = new Set(data.sectionsSaved);
                     this.selectedQuestions = data.selectedQuestions || this.selectedQuestions;
@@ -612,6 +667,7 @@ class SparkApp {
         }
         
         this.updateSaveButtonState();
+        this.updateEditorStyle();
         this.switchView('out');
         this.hasUnsavedChanges = false;
     }
@@ -621,8 +677,11 @@ class SparkApp {
         saveBtn.className = 'btn-action btn-save';
         saveBtn.onclick = () => this.saveAndNext();
         
-        // Logic: specific 3rd module button change happens in saveAndNext or checking status
-        if (this.sectionsSaved.size >= 2 && !this.sectionsSaved.has(this.currentModule)) {
+        const otherSectionsSaved = Array.from(this.sectionsSaved).filter(s => s !== this.currentModule).length;
+        const allSaved = this.sectionsSaved.size === 3;
+
+        // Show Final Submit if this is the last one to be saved, or if 2+ others are already saved
+        if (allSaved || otherSectionsSaved >= 2) {
              saveBtn.textContent = 'Final Submit';
              saveBtn.className = 'btn-action btn-final';
              saveBtn.onclick = () => this.handleFinalSubmit();
@@ -736,15 +795,18 @@ class SparkApp {
     }
 
     runSQL() {
-        const code = this.sessionData.sql.trim();
+        const rawCode = this.sessionData.sql.trim();
         const starter = "--write your sql query below";
-        const validation = this.validateSQL(code);
         
-        if (!code || code.toLowerCase() === starter) {
+        // Strip comments for processing
+        const code = this.stripComments(rawCode);
+        
+        if (!rawCode || rawCode.toLowerCase() === starter || !code) {
             this.showOutput(`<p style="color:#57606a;">> Please write your SQL query below to see results.</p>`); 
             return;
         }
 
+        const validation = this.validateSQL(code);
         if (!validation.valid) {
             this.showOutput(`<p class="output-error">> Error: ${this.escapeHtml(validation.error)}</p>`);
             return;
@@ -758,6 +820,20 @@ class SparkApp {
         } catch (error) {
             this.showOutput(`<p class="output-error">> Error: ${this.escapeHtml(error.message)}</p>`);
         }
+    }
+    
+    stripComments(sql) {
+        let clean = sql.split('\n')
+            .map(line => {
+                const idx = line.indexOf('--');
+                return idx >= 0 ? line.substring(0, idx) : line;
+            })
+            .join(' ')
+            .trim();
+            
+        // Also strip trailing semicolon if present
+        if (clean.endsWith(';')) clean = clean.slice(0, -1).trim();
+        return clean;
     }
     
     runBackendSample() {
@@ -797,7 +873,7 @@ class SparkApp {
     output += '</div>';
     this.showOutput(output);
     }
-    
+
     // ===================================
     // SUBMIT TEST HANDLERS (Validation)
     // ===================================
@@ -824,7 +900,10 @@ class SparkApp {
     }
     
     checkSQLCases() {
-        const code = this.sessionData.sql.trim();
+        const rawCode = this.sessionData.sql.trim();
+        // Strip comments for checking
+        const code = this.stripComments(rawCode);
+        
         const qIndex = this.selectedQuestions.sql;
         const q = this.questionBank.sql[qIndex];
         
@@ -844,9 +923,9 @@ class SparkApp {
         this.saveToLocalStorage();
 
         if (passed) {
-            this.showOutput('<div style="padding:15px; background:#e6fffa; color:#00695c; border:1px solid #b2dfdb; border-radius:4px;"><b>✓ Test cases passed (Score: 1/1 Mark)</b></div>');
+            this.showOutput('<div style="padding:15px; background:#e6fffa; color:#00695c; border:1px solid #b2dfdb; border-radius:4px;"><b>✓ Test cases passed</b></div>');
         } else {
-             this.showOutput('<div style="padding:15px; background:#fff5f5; color:#c53030; border:1px solid #fed7d7; border-radius:4px;"><b>✗ Test cases failed (Score: 0/1 Mark)</b></div>');
+             this.showOutput('<div style="padding:15px; background:#fff5f5; color:#c53030; border:1px solid #fed7d7; border-radius:4px;"><b>✗ Test cases failed</b></div>');
         }
     }
     
@@ -896,20 +975,10 @@ class SparkApp {
                         <span style="font-weight:600; color:${color}">${icon} Test Case ${idx + 1}</span>
                         <span style="font-size:11px; padding:2px 6px; background:${color}; color:white; border-radius:10px;">${isPassed ? 'Passed' : 'Failed'}</span>
                     </div>
-                    <div style="font-size:12px; color:#57606a;">
-                        <b>Input:</b> <code>${tc.input}</code><br>
-                        <b>Expected:</b> <code>${tc.expected}</code>
-                    </div>
                 </div>`;
         });
 
-        output += `
-            <div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:bold;">Final Score:</span>
-                <span style="font-size:18px; font-weight:800; color:${finalScore === 1 ? '#28a745' : '#d73a49'}">${finalScore}/1 Mark</span>
-            </div>
-            <div style="font-size:10px; color:#999; text-align:right;">(Requires 3/3 passed for 1 mark)</div>
-        </div>`;
+       
         
         this.showOutput(output);
     }
@@ -929,18 +998,18 @@ class SparkApp {
         const missingKeywords = q.requiredKeywords.filter(k => !fullCode.includes(k.toLowerCase()));
         if (missingKeywords.length === 0) {
             marks += 1;
-            details.push('<span style="color:#28a745">✓ Mark 1: All required keywords found.</span>');
+            details.push('<span style="color:#28a745">✓ Test Case 1</span>');
         } else {
-            details.push(`<span style="color:#d73a49">✗ Mark 1: Missing keywords (${missingKeywords.join(", ")}).</span>`);
+            details.push(`<span style="color:#d73a49">✗ Test Case 1</span>`);
         }
 
         // Mark 2: Functional Elements
         const missingElements = q.requiredElements.filter(e => !html.includes(`<${e}`));
         if (missingElements.length === 0 && (js.includes("style") || css.includes(q.title.toLowerCase().includes("toggle") ? "background" : ""))) {
             marks += 1;
-            details.push('<span style="color:#28a745">✓ Mark 2: Core functionality and elements detected.</span>');
+            details.push('<span style="color:#28a745">✓ Test Case 2</span>');
         } else {
-            details.push('<span style="color:#d73a49">✗ Mark 2: Missing required HTML elements or styling logic.</span>');
+            details.push('<span style="color:#d73a49">✗ Test Case 2</span>');
         }
 
         this.scores.frontend = marks;
@@ -950,9 +1019,7 @@ class SparkApp {
         output += `<h4 style="margin:0 0 15px 0;">Frontend Validation: ${q.title}</h4>`;
         output += `<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;">${details.join("")}</div>`;
         output += `<div style="padding-top:10px; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:bold;">Total Score:</span>
-            <span style="font-size:18px; font-weight:800; color:${marks === 2 ? '#28a745' : '#d73a49'}">${marks}/2 Marks</span>
-        </div></div>`;
+        </div>`;
 
         this.showOutput(output);
     }
@@ -976,6 +1043,7 @@ class SparkApp {
     }
 
     executeSQL(query) {
+        // Query is already stripped of comments by runSQL/checkSQLCases
         const normalized = query.toLowerCase().replace(/\s+/g, ' ').trim();
         
         // 1. Identify Tables and Joins
@@ -991,7 +1059,7 @@ class SparkApp {
         if (!data) throw new Error(`Table not found: ${mainTable}`);
         data = data.map(row => ({...row})); // Deep copy
 
-        // 2. Handle JOIN
+        // 2. Handle JOIN (with case-insensitive column lookup)
         if (joinTable) {
             const joinSource = this.database[Object.keys(this.database).find(k => k.toLowerCase() === joinTable.toLowerCase())];
             if (!joinSource) throw new Error(`Join table not found: ${joinTable}`);
@@ -1002,8 +1070,23 @@ class SparkApp {
             const joinedData = [];
             data.forEach(row1 => {
                 joinSource.forEach(row2 => {
-                    const val1 = t1.toLowerCase() === mainTable.toLowerCase() ? row1[c1] : row2[c1];
-                    const val2 = t2.toLowerCase() === joinTable.toLowerCase() ? row2[c2] : row1[c2];
+                    // Case-insensitive column lookup for JOIN
+                    let val1, val2;
+                    if (t1.toLowerCase() === mainTable.toLowerCase()) {
+                        const key1 = Object.keys(row1).find(k => k.toLowerCase() === c1.toLowerCase());
+                        val1 = row1[key1];
+                    } else {
+                        const key1 = Object.keys(row2).find(k => k.toLowerCase() === c1.toLowerCase());
+                        val1 = row2[key1];
+                    }
+                    
+                    if (t2.toLowerCase() === joinTable.toLowerCase()) {
+                        const key2 = Object.keys(row2).find(k => k.toLowerCase() === c2.toLowerCase());
+                        val2 = row2[key2];
+                    } else {
+                        const key2 = Object.keys(row1).find(k => k.toLowerCase() === c2.toLowerCase());
+                        val2 = row1[key2];
+                    }
                     
                     if (val1 !== undefined && val2 !== undefined && val1 === val2) {
                         joinedData.push({...row1, ...row2});
@@ -1044,27 +1127,110 @@ class SparkApp {
             data = data.slice(offset, offset + limit);
         }
         
-        // 6. SELECT Columns
+        // 6. SELECT Columns & Aggregations
         const selectAll = normalized.includes('select *');
         if (!selectAll) {
             const selectMatch = normalized.match(/select\s+(.*?)\s+from/);
             if (selectMatch) {
                 const selectedColumns = selectMatch[1].split(',').map(c => c.trim().toLowerCase());
-                data = data.map(row => {
-                    const newRow = {};
-                    selectedColumns.forEach(sc => {
-                        const actualKey = Object.keys(row).find(k => k.toLowerCase() === sc);
-                        if (actualKey) newRow[actualKey] = row[actualKey];
+                
+                // Check for aggregations
+                const hasAggregates = selectedColumns.some(c => 
+                    c.includes('count(') || c.includes('sum(') || c.includes('avg(') || 
+                    c.includes('max(') || c.includes('min(')
+                );
+                
+                if (hasAggregates) {
+                    // Handle aggregations
+                    const result = {};
+                    selectedColumns.forEach(col => {
+                        if (col === 'count(*)') {
+                            result['COUNT(*)'] = data.length;
+                        } else if (col.startsWith('count(')) {
+                            result['COUNT(*)'] = data.length;
+                        } else if (col.startsWith('sum(')) {
+                            const field = col.match(/sum\((.+?)\)/)[1];
+                            const actualKey = data.length > 0 ? Object.keys(data[0]).find(k => k.toLowerCase() === field) : null;
+                            result[`SUM(${actualKey || field})`] = data.reduce((sum, row) => sum + (row[actualKey] || 0), 0);
+                        } else if (col.startsWith('avg(')) {
+                            const field = col.match(/avg\((.+?)\)/)[1];
+                            const actualKey = data.length > 0 ? Object.keys(data[0]).find(k => k.toLowerCase() === field) : null;
+                            const sum = data.reduce((s, row) => s + (row[actualKey] || 0), 0);
+                            result[`AVG(${actualKey || field})`] = data.length > 0 ? sum / data.length : 0;
+                        } else if (col.startsWith('max(')) {
+                            const field = col.match(/max\((.+?)\)/)[1];
+                            const actualKey = data.length > 0 ? Object.keys(data[0]).find(k => k.toLowerCase() === field) : null;
+                            result[`MAX(${actualKey || field})`] = Math.max(...data.map(row => row[actualKey] || 0));
+                        } else if (col.startsWith('min(')) {
+                            const field = col.match(/min\((.+?)\)/)[1];
+                            const actualKey = data.length > 0 ? Object.keys(data[0]).find(k => k.toLowerCase() === field) : null;
+                            result[`MIN(${actualKey || field})`] = Math.min(...data.map(row => row[actualKey] || 0));
+                        }
                     });
-                    return newRow;
-                });
+                    return [result];
+                } else {
+                    // Regular column selection
+                    data = data.map(row => {
+                        const newRow = {};
+                        selectedColumns.forEach(sc => {
+                            const actualKey = Object.keys(row).find(k => k.toLowerCase() === sc);
+                            if (actualKey) newRow[actualKey] = row[actualKey];
+                        });
+                        return newRow;
+                    });
+                }
             }
         }
         
         return data;
     }
 
+    stripComments(sql) {
+        let clean = sql.split('\n')
+            .map(line => {
+                const idx = line.indexOf('--');
+                return idx >= 0 ? line.substring(0, idx) : line;
+            })
+            .join(' ')
+            .trim();
+            
+        // Also strip trailing semicolon if present
+        if (clean.endsWith(';')) clean = clean.slice(0, -1).trim();
+        return clean;
+    }
+    
     evaluateCondition(row, condition) {
+        // Handle LIKE operator
+        if (condition.includes(' like ')) {
+            const parts = condition.split(' like ').map(p => p.trim());
+            const column = parts[0];
+            let pattern = parts[1].replace(/['"]/g, '');
+            
+            const actualKey = Object.keys(row).find(k => k.toLowerCase() === column);
+            const rowValue = String(row[actualKey] || '');
+            
+            // Convert SQL LIKE pattern to regex
+            const regexPattern = pattern.replace(/%/g, '.*').replace(/_/g, '.');
+            const regex = new RegExp(`^${regexPattern}$`, 'i');
+            return regex.test(rowValue);
+        }
+        
+        // Handle IN operator
+        if (condition.includes(' in ')) {
+            const parts = condition.split(' in ');
+            const column = parts[0].trim();
+            const valueList = parts[1].trim().replace(/[()]/g, '').split(',').map(v => v.trim().replace(/['"]/g, ''));
+            
+            const actualKey = Object.keys(row).find(k => k.toLowerCase() === column);
+            const rowValue = row[actualKey];
+            
+            return valueList.some(v => {
+                const testValue = !isNaN(v) ? parseFloat(v) : v;
+                return rowValue == testValue;
+            });
+        }
+        
+        // Handle comparison operators
         const operators = ['>=', '<=', '!=', '=', '>', '<'];
         
         for (const op of operators) {
@@ -1075,7 +1241,9 @@ class SparkApp {
                 
                 if (!isNaN(value)) value = parseFloat(value);
                 
-                const rowValue = row[column];
+                // Fix: Case-insensitive lookup
+                const actualKey = Object.keys(row).find(k => k.toLowerCase() === column);
+                const rowValue = row[actualKey];
                 
                 switch (op) {
                     case '>=': return rowValue >= value;
@@ -1157,7 +1325,21 @@ class SparkApp {
         // Switch language instantly
         this.sessionData.backend = templates[language];
         document.getElementById('editor').value = templates[language];
+        this.updateEditorStyle();
         this.hasUnsavedChanges = true;
+    }
+
+    updateEditorStyle() {
+        const editor = document.getElementById('editor');
+        const langSel = document.getElementById('lang-selector');
+        const language = langSel ? langSel.value : '';
+        const isPython = this.currentModule === 'backend' && language === 'python';
+        
+        if (isPython) {
+            editor.classList.add('python-mode');
+        } else {
+            editor.classList.remove('python-mode');
+        }
     }
 
     saveAndNext() {
@@ -1166,65 +1348,60 @@ class SparkApp {
         this.updateStatus('Saved');
         this.showToast('Progress saved!', 'success');
 
-        // Force strict sequential navigation
-        let nextModule = null;
-        if (this.currentModule === 'sql') nextModule = 'backend';
-        else if (this.currentModule === 'backend') nextModule = 'frontend';
+        // Dynamic navigation: find next unsaved module
+        const modules = ['sql', 'backend', 'frontend'];
+        const nextModule = modules.find(m => !this.sectionsSaved.has(m));
         
-        // Update button state
+        // Update button state immediately
         this.updateSaveButtonState();
         
         if (nextModule) {
-            setTimeout(() => {
-                this.switchModule(nextModule);
-            }, 500);
+            this.switchModule(nextModule);
         }
     }
 
     handleFinalSubmit(autoSubmit = false) {
+        // Ensure current code is saved before final submit
+        const editor = document.getElementById('editor');
+        if (editor) {
+            this.updateCurrentCode(editor.value);
+        }
+        
         const message = autoSubmit 
             ? 'Time has expired. Your assessment will be submitted automatically.'
             : 'Are you sure you want to submit? You cannot make changes after submission.';
         
         const doSubmit = () => {
-    this.isSubmitted = true;
-    clearInterval(this.timerInterval);
-    clearInterval(this.autoSaveInterval);
-    
-    // Calculate total score from the three modules
-    const totalCodingScore = this.scores.sql + this.scores.backend + this.scores.frontend;
-    
-    // Save the specific key that result3.html expects
-    localStorage.setItem("coding_score", totalCodingScore);
-    
-    const submissionId = 'SUB_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9).toUpperCase();
-    
-    const submission = {
-        submissionId,
-        sessionId: this.sessionId,
-        sessionData: this.sessionData,
-        totalScore: totalCodingScore, // Optional: add to the object too
-        timeRemaining: this.timeRemaining,
-        timestamp: new Date().toISOString(),
-        autoSubmit
-    };
-    
-    localStorage.setItem('spark_submission_' + submissionId, JSON.stringify(submission));
-    // localStorage.removeItem('spark_session'); // Keep this if you want to clear session
+            try {
+                this.isSubmitted = true;
+                clearInterval(this.timerInterval);
+                clearInterval(this.autoSaveInterval);
+                
+                // Calculate total score
+                const totalCodingScore = (this.scores.sql || 0) + (this.scores.backend || 0) + (this.scores.frontend || 0);
+                localStorage.setItem("coding_score", totalCodingScore);
+                
+                const submissionId = 'SUB_' + Date.now() + '_' + Math.random().toString(36).substr(2).toUpperCase();
+                const submission = {
+                    submissionId,
+                    sessionId: this.sessionId,
+                    sessionData: this.sessionData,
+                    totalScore: totalCodingScore,
+                    timeRemaining: this.timeRemaining,
+                    timestamp: new Date().toISOString(),
+                    autoSubmit
+                };
+                
+                localStorage.setItem('spark_submission_' + submissionId, JSON.stringify(submission));
+                this.showToast('Assessment submitted successfully!', 'success');
+            } catch (error) {
+                console.error('Submission failed but redirecting:', error);
+            } finally {
+                // Ensure redirection happens regardless of storage success
+                window.location.replace("timer4.html");
+            }
+        };
 
-    this.showToast('Assessment submitted successfully!', 'success');
-    
-    // UI Updates
-    document.getElementById('editor').disabled = true;
-    document.getElementById('btn-run').disabled = true;
-    document.getElementById('btn-save').disabled = true;
-    document.getElementById('btn-submit').disabled = true;
-    
-    setTimeout(() => {
-        // Optional: Redirect to results page
-        window.location.href = "timer4.html"; 
-    }, 1000);
-};
         if (autoSubmit) {
             doSubmit();
         } else {
