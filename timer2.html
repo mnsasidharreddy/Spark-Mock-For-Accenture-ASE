@@ -133,7 +133,7 @@
 
   <script>
     const minutes = Math.floor(Math.random() * 4) + 2;
-    let timeLeft = 0//minutes * 60;
+    let timeLeft = minutes * 60;
 
     function updateTimer() {
       const mins = Math.floor(timeLeft / 60);
@@ -168,4 +168,5 @@
   </script>
 
 </body>
+
 </html>
