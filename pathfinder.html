@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rocket Mission: Deep Space</title>
+    <style>
+        :root { 
+            --bg: white; --track: gray; --accent: rgb(128, 128, 128); 
+            --tile-bg: white; --grid-line: rgba(128, 128, 128, 0.227);
+            --danger: #e74c3c;
+        }
+        /* FIX: Added margin: 0 to remove the white gaps on the sides */
+        body { 
+            background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
+            min-height: 100vh; margin: 0; user-select: none;
+        }
+        #game-container { position: relative; padding: 50px; margin-top: auto; }
+        #grid-frame { 
+            display: grid; background: var(--grid-line); gap: 4px; 
+            border: 6px solid var(--grid-line); border-radius: 8px;
+            transition: transform 0.3s ease;
+        }
+        .submatrix { 
+            display: grid; grid-template-columns: repeat(3, 30px); 
+            grid-template-rows: repeat(3, 30px); background: var(--tile-bg); 
+            cursor: pointer; width: 90px; height: 90px;
+        }
+        .submatrix.selected { outline: 4px solid rgba(0, 0, 0, 0.592); z-index: 10; box-shadow: 0 0 20px var(--accent); }
+        .cell { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; position: relative; }
+        .track-bg { background-color: var(--track); }
+        .arrow { width: 22px; height: 22px; fill: white; z-index: 5; pointer-events: none; }
+        .mission-marker { 
+            position: absolute; z-index: 100; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 30px; height: 30px; font-size: 24px; pointer-events: none;
+        }
+        #mission-control-wrapper { margin-top: 30px; margin-bottom: auto; display: flex; align-items: center; gap: 25px; }
+        #timer-container {
+            width: 70px; height: 70px; border: 5px solid var(--accent); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: monospace; font-weight: bold; font-size: 18px; color: var(--accent);
+        }
+        #mission-control { display: flex; gap: 15px; }
+        .btn { 
+            width: 65px; height: 60px; background: gray; color: white; 
+            border: none; border-radius: 10px; cursor: pointer; font-size: 24px;
+        }
+        .btn:active { transform: scale(0.9); }
+        
+        .shake { animation: shake 0.4s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* Nav Styles */
+        nav { 
+            position: relative;
+            top:0;
+            background: black; 
+            height: 60px; 
+            width: 100%;
+            display: flex; 
+            align-items: center; 
+            padding: 0 30px; 
+            box-sizing: border-box;
+        }
+
+        .logo { 
+            font-weight: bold; 
+            font-size: 30px; 
+            letter-spacing: 2px; 
+            color: white; 
+        }
+
+        .logo span { color: #007bff; }
+
+        /* Footer Styles */
+        footer {
+            position: relative;
+            bottom: 0;
+            background: black;
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 30px;
+            box-sizing: border-box;
+            font-size: 20px;
+            color: white;
+        }
+        .navbar {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-size: 16px; 
+        text-align: center;
+        font-weight: bold;
+        width: auto;
+        white-space: nowrap;
+    }
+    </style>
+</head>
+<body> 
+
+<nav>
+    <div class="logo">SPARK<span>.</span></div>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+</nav>
+
+<div id="game-container">
+    <div id="rocket" class="mission-marker" style="rotate:45deg">🚀</div>
+    <div id="grid-frame"></div>
+    <div id="moon" class="mission-marker">🌙</div>
+</div>
+
+<div id="mission-control-wrapper">
+    <div id="timer-container"><span id="timer-text">05:00</span></div>
+    <div id="mission-control">
+        <button class="btn" onclick="applyAction('rotate')">&#x1F5D8;</button>
+        <button class="btn" onclick="applyAction('flip')">⇄</button>
+        <button class="btn" onclick="launchRocket()">&#x2714;</button>
+    </div>
+</div>
+
+<footer>
+    <div>with <span style="color: red;">❤</span> SASIDHAR</div>
+</footer>
+
+<script>
+/* Game logic remains exactly as you provided */
+let gridData = [], selectedIdx = null, currentSize = 3, startTileIdx, endTileIdx;
+let globalTime = 300, timerStarted = false, isLaunching = false;
+
+const SHAPES = {
+    'dash': [3, 4, 5],
+    'L': [1, 4, 5],
+    'T': [1, 3, 4, 5],
+    'plus': [1, 3, 4, 5, 7]
+};
+
+function startGlobalTimer() {
+    if (timerStarted) return;
+    timerStarted = true;
+    const interval = setInterval(() => {
+        if(isLaunching) return;
+        globalTime--;
+        let mins = Math.floor(globalTime / 60);
+        let secs = globalTime % 60;
+        document.getElementById('timer-text').innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
+        if (globalTime <= 0) {
+            clearInterval(interval);
+            let levelsSolved = currentSize - 3; 
+            localStorage.setItem("pathfinderScore", levelsSolved);
+            window.location.href="./doormaze.html";
+        }
+    }, 1000);
+}
+
+function rotateNode(n, times) {
+    let res = n;
+    for(let i=0; i<times; i++) {
+        let x = res % 3, y = Math.floor(res / 3);
+        res = (2 - y) + (x * 3);
+    }
+    return res;
+}
+
+function getAngle(f, t) {
+    return Math.atan2(Math.floor(t/3)-Math.floor(f/3), (t%3)-(f%3)) * 180 / Math.PI;
+}
+
+function init() {
+    startGlobalTimer();
+    isLaunching = false;
+    const frame = document.getElementById('grid-frame');
+    frame.style.gridTemplateColumns = `repeat(${currentSize}, 90px)`;
+    frame.innerHTML = '';
+    
+    let path;
+    do { path = generatePath(); } while (path.length <= currentSize); 
+
+    startTileIdx = path[0];
+    endTileIdx = path[path.length - 1];
+    gridData = [];
+
+    for (let i = 0; i < currentSize * currentSize; i++) {
+        let entry, exit, shapeKey, isPath = path.includes(i);
+        
+        if (isPath) {
+            let idx = path.indexOf(i);
+            entry = (idx === 0) ? 3 : getEntryFromNeighbor(path[idx-1], i);
+            exit = (idx === path.length - 1) ? 5 : getEntryFromNeighbor(path[idx+1], i);
+        } else {
+            let nodes = [1, 3, 5, 7];
+            entry = nodes[Math.floor(Math.random()*4)];
+            exit = nodes.filter(n => n !== entry && n + entry !== 8)[Math.floor(Math.random()*2)];
+        }
+
+        let possible = Object.keys(SHAPES).filter(k => {
+            for(let r=0; r<4; r++) {
+                let rot = SHAPES[k].map(n => rotateNode(n, r));
+                if(rot.includes(entry) && rot.includes(exit)) return true;
+            }
+            return false;
+        });
+        shapeKey = possible[Math.floor(Math.random() * possible.length)];
+        
+        let rotation = 0;
+        for(let r=0; r<4; r++) {
+            let rot = SHAPES[shapeKey].map(n => rotateNode(n, r));
+            if(rot.includes(entry) && rot.includes(exit)) { rotation = r; break; }
+        }
+
+        gridData[i] = {
+            track: SHAPES[shapeKey].map(n => rotateNode(n, rotation)),
+            arrows: [entry, 4, exit]
+        };
+
+        let rots = Math.floor(Math.random()*4);
+        for(let r=0; r<rots; r++) rotateTileData(i);
+        if(Math.random() > 0.5) gridData[i].arrows.reverse();
+
+        const sub = document.createElement('div');
+        sub.className = 'submatrix';
+        sub.id = `tile-${i}`;
+        sub.onclick = () => selectTile(i);
+        frame.appendChild(sub);
+        renderTile(i);
+    }
+    lockMarkers();
+}
+
+function generatePath() {
+    let p = [Math.floor(Math.random()*currentSize)*currentSize];
+    let safety = 0;
+    while(p[p.length-1] % currentSize !== currentSize - 1 && safety < 100) {
+        safety++;
+        let curr = p[p.length-1], r = Math.floor(curr/currentSize), c = curr%currentSize;
+        let adj = [];
+        if(r > 0) adj.push(curr - currentSize);
+        if(r < currentSize - 1) adj.push(curr + currentSize);
+        adj.push(curr + 1);
+        adj = adj.filter(n => !p.includes(n));
+        if(adj.length === 0) return generatePath();
+        p.push(adj[Math.floor(Math.random()*adj.length)]);
+    }
+    return p;
+}
+
+function getEntryFromNeighbor(prev, curr) {
+    let d = curr - prev;
+    if(d === 1) return 3; if(d === -1) return 5;
+    if(d === currentSize) return 1; return 7;
+}
+
+function renderTile(idx) {
+    const el = document.getElementById(`tile-${idx}`);
+    el.innerHTML = '';
+    const d = gridData[idx];
+    for(let c=0; c<9; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (d.track.includes(c) ? ' track-bg' : '');
+        let aIdx = d.arrows.indexOf(c);
+        if(aIdx !== -1) {
+            let angle = (aIdx < 2) ? getAngle(c, d.arrows[aIdx+1]) : getAngle(d.arrows[aIdx-1], c);
+            cell.innerHTML = `<svg class="arrow" style="transform:rotate(${angle}deg)" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>`;
+        }
+        el.appendChild(cell);
+    }
+}
+function rotateTileData(idx) {
+    gridData[idx].track = gridData[idx].track.map(n => rotateNode(n, 1));
+    gridData[idx].arrows = gridData[idx].arrows.map(n => rotateNode(n, 1));
+}
+function selectTile(i) {
+    if(isLaunching) return;
+    if(selectedIdx !== null) document.getElementById(`tile-${selectedIdx}`).classList.remove('selected');
+    selectedIdx = i; document.getElementById(`tile-${i}`).classList.add('selected');
+}
+function applyAction(type) {
+    if(selectedIdx === null || isLaunching) return;
+    if(type === 'rotate') rotateTileData(selectedIdx);
+    else gridData[selectedIdx].arrows.reverse();
+    renderTile(selectedIdx);
+}
+function lockMarkers() {
+    const r = document.getElementById('rocket'), m = document.getElementById('moon');
+    const frameRect = document.getElementById('grid-frame').getBoundingClientRect();
+    const containerRect = document.getElementById('game-container').getBoundingClientRect();
+    
+    // Adjusted positioning to be relative to the game container
+    r.style.left = (frameRect.left - containerRect.left - 40) + 'px'; 
+    r.style.top = (frameRect.top - containerRect.top + Math.floor(startTileIdx/currentSize)*94 + 30) + 'px';
+    
+    m.style.left = (frameRect.right - containerRect.left + 10) + 'px'; 
+    m.style.top = (frameRect.top - containerRect.top + Math.floor(endTileIdx/currentSize)*94 + 30) + 'px';
+}
+async function failMission() {
+    const frame = document.getElementById('grid-frame');
+    frame.classList.add('shake');
+    setTimeout(() => {
+        frame.classList.remove('shake');
+        lockMarkers();
+        isLaunching = false;
+    }, 400);
+}
+async function launchRocket() {
+    if(isLaunching) return;
+    isLaunching = true;
+    let curr = startTileIdx, visited = new Set();
+    const r = document.getElementById('rocket');
+    const frameRect = document.getElementById('grid-frame').getBoundingClientRect();
+    const containerRect = document.getElementById('game-container').getBoundingClientRect();
+    
+    if(gridData[curr].arrows[0] !== 3) return failMission();
+
+    while(curr !== null) {
+        if(visited.has(curr)) break;
+        visited.add(curr);
+        let d = gridData[curr];
+        for(let s of d.arrows) {
+            r.style.left = (frameRect.left - containerRect.left + curr%currentSize*94 + s%3*30) + 'px';
+            r.style.top = (frameRect.top - containerRect.top + Math.floor(curr/currentSize)*94 + Math.floor(s/3)*30) + 'px';
+            await new Promise(res => setTimeout(res, 80));
+        }
+        
+        if(curr === endTileIdx && d.arrows[2] === 5) { 
+            currentSize++; 
+            setTimeout(init, 500); 
+            return; 
+        }
+        let exit = d.arrows[2], next = null;
+        if(exit === 5 && curr % currentSize < currentSize-1) next = curr + 1;
+        else if(exit === 3 && curr % currentSize > 0) next = curr - 1;
+        else if(exit === 7 && curr < currentSize*(currentSize-1)) next = curr + currentSize;
+        else if(exit === 1 && curr >= currentSize) next = curr - currentSize;
+        if(next !== null && gridData[next].arrows[0] === (exit === 5 ? 3 : exit === 3 ? 5 : exit === 1 ? 7 : 1)) {
+            curr = next;
+        } else {
+            break;
+        }
+    }
+    failMission();
+}
+window.onload = init;
+window.onresize = lockMarkers;
+</script>
+</body>
+</html>

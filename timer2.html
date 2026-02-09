@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Submitting Test</title>
+  <style>
+    body {
+      overflow: hidden;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #ffffff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      color: #333;
+      user-select: none;
+    }
+
+    .navbar {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-size: 16px; 
+        text-align: center;
+        font-weight: bold;
+        width: auto;
+        white-space: nowrap;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 60px; 
+    }
+
+    .message {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-align: center;
+      color: #000;
+    }
+
+    .warning {
+      font-size: 20px;
+      color: #e5938a;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .timer {
+      font-size: 82px;
+      font-weight: 300;
+      color: #444;
+      line-height: 1;
+    }
+
+    .digit {
+      font-weight: 300; 
+    }
+
+    .colon {
+      font-weight: normal;
+    }
+
+    .label {
+      font-size: 22px;
+      color: #999;
+      margin-top: 5px;
+      margin-bottom: 45px;
+    }
+
+    .note {
+      font-size: 19px;
+      color: #ccc;
+      text-align: center;
+    }
+    .page-footer {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 40px;
+      background: black; display: flex; align-items: center; 
+      justify-content: end; 
+      padding-right: 20px; 
+      z-index: 2000; font-size: 20px; color: white;
+      box-sizing: border-box;
+    }
+    .heart { color: #e74c3c; margin: 0 5px; }
+    nav { 
+        background: black; 
+        height: 60px; 
+        display: flex; 
+        align-items: center; 
+        padding: 0 30px; 
+        position: relative; 
+    }
+    .logo { 
+      font-weight: bold; 
+      font-size: 30px; 
+      letter-spacing: 2px; 
+      color: white; 
+      z-index: 10;
+    }
+
+    .logo span { color: #007bff; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">SPARK<span>.</span></div>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="message">Please wait while we submit your test.</div>
+    <div class="warning">Please do NOT close this window or press refresh/back button.</div>
+    
+    <div class="timer">
+      <span class="digit" id="min">02</span><span class="colon">:</span><span class="digit" id="sec">14</span>
+    </div>
+    
+    <div class="label">Remaining</div>
+    <div class="note">This process can take several minutes</div>
+  </div>
+
+  <footer class="page-footer" id="mainFooter">
+        with <span class="heart">&#x2764;</span> SASIDHAR
+    </footer>
+
+  <script>
+    const minutes = Math.floor(Math.random() * 4) + 2;
+    let timeLeft = 0//minutes * 60;
+
+    function updateTimer() {
+      const mins = Math.floor(timeLeft / 60);
+      const secs = timeLeft % 60;
+
+      document.getElementById("min").textContent = String(mins).padStart(2, '0');
+      document.getElementById("sec").textContent = String(secs).padStart(2, '0');
+
+      if (timeLeft > 0) {
+        timeLeft--;
+        setTimeout(updateTimer, 1000);
+      } else{
+        // 1. Retrieve scores from localStorage
+        const bubble_test_score = parseInt(localStorage.getItem("bubble_test_score") || 0);
+        const pathfinderScore = parseInt(localStorage.getItem("pathfinderScore") || 0);
+        const mazeScore = parseInt(localStorage.getItem("mazeScore") || 0);
+
+        // 2. Perform Eligibility Check
+        // Criteria: bubScore > 5 AND pathScore > 1 AND mazeScore > 1
+        if (bubble_test_score >= 5 && pathfinderScore >=1 && mazeScore >= 1) {
+            window.location.href = "./congrats2.html"; // Eligible
+        } else {
+            window.location.href = "./regret.html";    // Not Eligible
+        }
+        
+      }
+    }
+
+    updateTimer() 
+
+    ;
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ASE Quiz</title>
+    <style>
+        .navbar {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-size: 16px; 
+        text-align: center;
+        font-weight: bold;
+        width: auto;
+        white-space: nowrap;
+    }
+        nav {
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+            background: black; display: flex; align-items: center;
+            padding: 0 30px; z-index: 2000; box-sizing: border-box;
+        }
+        .logo { font-weight: bold; font-size: 30px; letter-spacing: 2px; color: white; }
+        .logo span { color: #007bff; } 
+        footer {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 40px;
+            background: black; display: flex; align-items: center; 
+            justify-content: end; 
+            padding-right: 20px; 
+            z-index: 2000; font-size: 20px; color: white;
+            box-sizing: border-box;
+        }
+        .heart { color: #e74c3c; margin: 0 5px; }
+        :root { --company-green: #008751; --company-blue: #4a90e2; --dark-nav: #2b2b2b; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f0f0f0; color: #333; user-select: none;}
+        
+        .overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); display: flex; justify-content: center; 
+            align-items: flex-start; z-index: 1000; overflow-y: auto;
+        }
+        .modal { 
+            background: white; width: 900px; border-radius: 0 0 8px 8px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: flex; 
+            flex-direction: column; max-height: 95vh; margin: 0;
+        }
+        .content { padding: 40px 50px; overflow-y: auto; }
+
+        .progress-bar { display: flex; align-items: center; margin-bottom: 25px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; background: #ccc; }
+        .dot.active { background: var(--company-green); }
+        .line { width: 60px; height: 2px; background: #ccc; }
+        .line.active { background: var(--company-green); }
+
+        .title { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #000; }
+        .sub-blue { color: var(--company-blue); font-weight: bold; font-size: 18px; margin-bottom: 15px; display: block; }
+        .red-warn { color: #d93025; font-weight: bold; }
+        .section-bold { font-weight: bold; margin-top: 15px; display: block; color: #000; }
+
+        .sys-item { display: flex; justify-content: space-between; padding: 12px 20px; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 10px; background: #fafafa; font-weight: 500; }
+        .status-icon { font-weight: bold; }
+        .status-success { color: var(--company-green); }
+        .check-box-row { display: flex; gap: 12px; margin: 15px 0; font-weight: bold; cursor: pointer; align-items: flex-start; }
+        .check-box-row input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 8px; }
+
+        .footer-btns { padding: 20px 50px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fff; border-radius: 0 0 8px 8px; }
+        .btn-next { background: var(--company-green); color: white; border: none; padding: 12px 40px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-blue { background: var(--company-blue); color: white; border: none; padding: 12px; border-radius: 4px; width: 100%; font-weight: bold; cursor: pointer; }
+        
+        .nav-bar { background: var(--dark-nav); color: white; padding: 15px 60px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-start { background: #444; color: #888; border: none; padding: 10px 35px; border-radius: 4px; cursor: not-allowed; font-weight: bold; }
+        .btn-start.active { background: var(--company-green); color: white; cursor: pointer; }
+
+        .options-grid { display: flex; justify-content: center; gap: 12px; margin-bottom: 60px; }
+        .option-box { 
+            width: 125px; height: 180px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px;
+            display: flex; flex-direction: column; cursor: pointer; transition: all 0.2s;
+        }
+        .option-box:hover { background: #f0f0f0; border-color: #bbb; }
+        .option-box.selected { background: #757575; color: white; border-color: #444; }
+        .box-num { 
+            background: #555; color: white; width: 28px; height: 28px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; font-size: 14px; margin: 12px; border-radius: 2px;
+        }
+        .box-label { padding: 0 10px; font-size: 13px; font-weight: 600; margin-top: auto; margin-bottom: 30px; line-height: 1.3; text-align: center;}
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="pop1" class="overlay">
+    <div class="modal">
+        <div class="content">
+            <div class="title">Online Proctoring Setup</div>
+            <div class="progress-bar"><div class="dot active"></div><div class="line"></div><div class="dot"></div><div class="line"></div><div class="dot"></div></div>
+            <span class="sub-blue">About Online Proctoring</span>
+            <p>This is an online proctored test, where we will monitor the entire session to ensure the integrity of the test.</p>
+            <p><b>Please make sure that your webcam and microphone is on throughout the test, and that you are present and clearly visible in the camera throughout the test.</b></p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; font-size: 13px;">
+                <div>You certify that you are attending the test yourself, and you certify that <span class="red-warn">"If found to be engaged in any act of fraudulent, misrepresentation or any use of unfair means candidate would be disqualified from the process"</span></div>
+                <div>You agree that your information (answers, video, audio, online session) will be recorded, stored, viewed, and analyzed to ensure the integrity of the assessment</div>
+                <div>You understand that the use of your information will be in accordance with the applicable data privacy law and in line with our Global Privacy Statement as shared and agreed at the time of registration.</div>
+            </div>
+            <label class="check-box-row"><input type="checkbox" onchange="toggleBtn('btn1', this)"> <span>I agree to the terms & conditions above, and I fully understand my rights to access, correct or withdraw my information anytime.</span></label>
+        </div>
+        <div class="footer-btns"><button id="btn1" class="btn-next hidden" onclick="showPop('pop1', 'pop2')">Next</button></div>
+    </div>
+</div>
+
+<div id="pop2" class="overlay hidden">
+    <div class="modal">
+        <div class="content">
+            <div class="title">Online Proctoring Setup</div>
+            <div class="progress-bar"><div class="dot active"></div><div class="line active"></div><div class="dot active"></div><div class="line"></div><div class="dot"></div></div>
+            <span class="sub-blue">Assessment Terms & Conditions</span>
+            <p>At <b>Spark</b>, we are committed to maintaining the highest ethical standards in all our assessments and interviews.</p>
+            <p>All our assessments and interviews are recorded and undergo multiple stages of auditing, both before an offer is extended and after onboarding. We uphold strict protocols to prevent any form of malpractice, including but not limited to:</p>
+            <ul>
+                <li>Cheating</li>
+                <li>Unauthorized communication</li>
+                <li>Use of prohibited devices (such as mobile phones, tablets, secondary laptops/desktops, earphones, and headphones)</li>
+                <li>Any attempts to tamper with systems, including the use of malicious software</li>
+            </ul>
+
+            <span class="section-bold">Please ensure the following during your assessment:</span>
+            <ul>
+                <li>Keep your camera and microphone on throughout the assessment, using the device you are taking the assessment on.</li>
+                <li>Remain clearly visible on camera for the entire duration of the assessment.</li>
+                <li>Do not seek any external assistance or collaborate with others during the assessment.</li>
+                <li>Do not connect your device to any 'secondary' monitor unless your primary monitor (the one originally used for taking the assessment) is non-functional.</li>
+                <li>Avoid opening multiple browser tabs while taking the assessment.</li>
+                <li>Unless the assessment is being proctored in person at your college, please ensure you are seated in a quiet, distraction-free environment throughout the assessment.</li>
+            </ul>
+
+            <span class="section-bold">Consequences of Unauthorized Activities:</span>
+            <p>Any engagement in unauthorized or fraudulent activities, misrepresentation, or the use of unfair means during the recruitment process will result in appropriate actions by <b>Spark</b>. This may include disqualification from the current recruitment process as well as all future opportunities.</p>
+
+            <span class="section-bold">Data Privacy:</span>
+            <p>Your information, including answers, video, audio, and online session data, will be recorded, stored, viewed, and analyzed to ensure the integrity of the assessment. Please be assured that this data will be handled in accordance with applicable data privacy laws and <b>Spark</b>'s Global Privacy Statement, as agreed upon during registration.</p>
+            
+            <p><strong>We encourage all candidates to adhere to these guidelines throughout assessments and interviews to ensure a fair and transparent process.</strong></p>
+
+            <label class="check-box-row"><input type="checkbox" id="c2a" onchange="validatePop2()"> <span>I agree to the Assessment Terms & Conditions above.</span></label>
+            <label class="check-box-row"><input type="checkbox" id="c2b" onchange="validatePop2()"> <span>I fully understand and agree that <span class="red-warn">if I am found to be engaged in any act of fraud, misrepresentation or any use of unfair means, I would be disqualified from the process.</span></span></label>
+        </div>
+        <div class="footer-btns"><button id="btn2" class="btn-next hidden" onclick="runSystemChecks()">Next</button></div>
+    </div>
+</div>
+
+<div id="pop3" class="overlay hidden">
+    <div class="modal">
+        <div class="content">
+            <div class="title">Online Proctoring Setup</div>
+            <div class="progress-bar"><div class="dot active"></div><div class="line active"></div><div class="dot active"></div><div class="line active"></div><div class="dot active"></div></div>
+            <span class="sub-blue">System Check + Verification Photo</span>
+            <div style="display:flex; gap:40px;">
+                <div style="flex:1;">
+                    <div class="sys-item"><span>📷 Camera</span><span id="check-cam" class="status-icon">...</span></div>
+                    <div class="sys-item"><span>🎤 Microphone</span><span id="check-mic" class="status-icon">...</span></div>
+                    <div class="sys-item"><span>🌐 Browser</span><span id="check-browser" class="status-icon">...</span></div>
+                    <div class="sys-item"><span>⚡ Internet</span><span id="check-net" class="status-icon">📶</span></div>
+                </div>
+                <div style="flex:1; text-align:center;">
+                    <div style="width:100%; aspect-ratio:4/3; background:#000; border:2px solid var(--company-green); border-radius:4px; margin-bottom:15px; overflow:hidden;">
+                        <video id="v" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                        <canvas id="canv" class="hidden" style="width:100%; height:100%; object-fit:cover;"></canvas>
+                    </div>
+                    <button id="selfieBtn" class="btn-blue hidden" onclick="capturePhoto()">Click a Selfie</button>
+                    <button id="proceedBtn" class="btn-next hidden" style="width:100%; margin-top:10px;" onclick="showPop('pop3', 'welcomeScreen')">Proceed to Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="welcomeScreen" class="hidden">
+    <div class="nav-bar">
+        <div>
+            <div style="font-size: 20px; font-weight: bold; font-style: italic; letter-spacing: -1px;">SPARK<span style="color: #007bff">.</span></div>
+            <div style="font-size: 14px; margin-top: 5px;">Welcome <b>Sai Kurnella</b> to the online assessment for <b>Spark</b>.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:20px;">
+            <label style="font-size:12px; color:#ccc; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" onchange="toggleStartBtn(this)"> I agree to the <span style="text-decoration:underline; cursor:pointer;">Terms of Use</span>
+            </label>
+            <button id="mainStartBtn" class="btn-start" disabled onclick="showPop('welcomeScreen', 'pop4')">Start Test</button>
+        </div>
+    </div>
+    <footer>
+    with <span class="heart">&#x2764;</span> SAI KURNELLA
+    </footer>
+</div>
+
+<div id="pop4" class="overlay hidden" style="background:white;">
+    <nav>
+    <div class="logo">SPARK<span>.</span></div>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+    </nav>
+    <div style="max-width:950px; padding:60px 80px; margin:auto;">
+        <h2 style="font-size:22px;">Hello, and welcome to the <b>Spark</b> Assessment!</h2>
+        <p>Thank you for applying to join our organization. As part of the selection process, you will be asked to complete two assessments: <b>'Factors'</b>, a behavioral questionnaire, and <b>'Mindgage'</b>, a set of cognitive ability tests.</p>
+        <p>Before you begin, we want to make sure you feel comfortable with the layout and types of questions you'll encounter. To help with this, we've set up a practice assessment. This will give you a chance to get familiar with the format and style of questions.</p>
+        <p>Here's what you need to know:</p>
+        <ol style="font-weight:bold; line-height:2;">
+            <li>No Scoring: <span style="font-weight:normal;">The practice assessments are not scored. Their purpose is to help you understand the layout and structure of the actual assessment questions.</span></li>
+            <li>'Factors' Practice: <span style="font-weight:normal;">You will have 5 practice questions. This section is untimed, so take your time to get familiar with the questions.</span></li>
+            <li>'Mindgage' Practice: <span style="font-weight:normal;">This part includes three timed practice sections that cover each area of the cognitive ability test.</span></li>
+            <li>Read Carefully: <span style="font-weight:normal;">Be sure to read all the instructions before you begin the practice items.</span></li>
+        </ol>
+        <div style="display:flex; justify-content:flex-end; border-top:1px solid #eee; margin-top:40px; padding-top:20px;">
+            <button class="btn-start active" style="text-transform:uppercase; border-radius:2px;" onclick="showPop('pop4', 'pop5')">Continue ></button>
+        </div>
+    </div>
+    <footer>
+    with <span class="heart">&#x2764;</span> SAI KURNELLA
+    </footer>
+</div>
+
+<div id="pop5" class="hidden" style="background:#fff; height:100vh;">
+    <nav>
+    <div class="logo">SPARK<span>.</span></div>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+    </nav>
+    <div style="max-width:1000px; margin:auto; padding:60px 80px;">
+        <p>This personality questionnaire seeks to understand how you typically behave at work. It is not timed, so please take as long as you need to complete it. Please indicate the extent to which you agree or disagree with each statement.</p>
+        <p>The rating scale goes from 1 to 7; please see the scale labels below:</p>
+        <ul style="list-style:none; padding:0; font-weight:bold; line-height:2.4; font-size:16px;">
+            <li>1 - Strongly disagree</li>
+            <li>2 - Disagree</li>
+            <li>3 - Slightly disagree</li>
+            <li>4 - Neither agree nor disagree</li>
+            <li>5 - Slightly agree</li>
+            <li>6 - Agree</li>
+            <li>7 - Strongly agree</li>
+        </ul>
+        <div style="display:flex; justify-content:flex-end; margin-top:50px;">
+            <button class="btn-start active" style="padding:12px 50px;" onclick="startBehavioral()">NEXT</button>
+        </div>
+    </div>
+    <footer>
+    with <span class="heart">&#x2764;</span> SAI KURNELLA
+    </footer>
+</div>
+
+<div id="behavioralAssessment" class="hidden" style="background:#fff; height:100vh; overflow-y: auto;">
+    <nav>
+    <div class="logo">SPARK<span>.</span></div>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+    </nav>
+    <div style="max-width:1100px; margin:auto; padding:40px 20px; text-align: center;">
+        <div id="questionContainer" style="margin-top: 40px;">
+            <h2 id="qText" style="font-size: 24px; color: #333; margin-bottom: 50px; min-height: 60px; font-weight: 500;"></h2>
+            <div id="optionsGrid" class="options-grid"></div>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-top: 40px;">
+                <span id="qCount" style="font-weight: bold; color: #555; font-size: 16px;">1 / 54</span>
+                <div style="width: 400px; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                    <div id="pFill" style="height: 100%; background: #555; width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>
+    with <span class="heart">&#x2764;</span> SAI KURNELLA
+    </footer>
+</div>
+
+<div id="finalResult" class="hidden" style="background:#fff; min-height:100vh; overflow-y: auto;">
+    <nav>
+    <div class="logo">SPARK<span>.</span></div>
+    </nav>
+    <div style="max-width:850px; margin:auto; padding:50px 20px;">
+        <div style="text-align:center; margin-bottom:40px;">
+            <h2 style="color:#333;">Assessment Summary</h2>
+            <div style="display:inline-block; border: 2px solid var(--company-green); padding:10px 40px; border-radius:4px; font-size:22px; font-weight:bold;">
+                Total Score: <span id="displayScore"></span>
+            </div>
+        </div>
+
+        <div style="background:#f9f9f9; padding:30px; border-radius:8px; border-left:6px solid var(--company-blue);">
+            <h3 id="profileTitle" style="color:var(--company-blue); margin-top:0; font-size:22px;"></h3>
+            <p id="profileDesc" style="line-height:1.6; font-size:16px; color:#444;"></p>
+            
+            <h4 style="margin-bottom:10px; color:#333;">Key Strengths:</h4>
+            <ul id="strengthList" style="line-height:2; font-size:15px; color:#555;"></ul>
+        </div>
+
+        <div style="margin-top:30px; text-align:center;">
+            <button class="btn-next" style="background:var(--company-blue);" onclick="location.reload()">Finish & Close</button>
+        </div>
+    </div>
+    <footer>
+    with <span class="heart">&#x2764;</span> SASIDHAR
+    </footer>
+</div>
+
+<script>
+    function showPop(hide, show) {
+        document.getElementById(hide).classList.add('hidden');
+        document.getElementById(show).classList.remove('hidden');
+    }
+
+    function toggleBtn(id, el) {
+        document.getElementById(id).classList.toggle('hidden', !el.checked);
+    }
+
+    function validatePop2() {
+        const ok = document.getElementById('c2a').checked && document.getElementById('c2b').checked;
+        document.getElementById('btn2').classList.toggle('hidden', !ok);
+    }
+
+    async function runSystemChecks() {
+        showPop('pop2', 'pop3');
+        document.getElementById('check-browser').innerText = "✓";
+        document.getElementById('check-net').innerText = "✓";
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('v').srcObject = stream;
+            document.getElementById('check-cam').innerText = "✓";
+            document.getElementById('check-mic').innerText = "✓";
+            document.getElementById('selfieBtn').classList.remove('hidden');
+        } catch (err) {
+            document.getElementById('check-cam').innerText = "✕";
+            document.getElementById('check-mic').innerText = "✕";
+        }
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('v');
+        const canvas = document.getElementById('canv');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        video.classList.add('hidden');
+        canvas.classList.remove('hidden');
+        document.getElementById('selfieBtn').innerText = "Retake Selfie";
+        document.getElementById('proceedBtn').classList.remove('hidden');
+    }
+
+    function toggleStartBtn(el) {
+        const btn = document.getElementById('mainStartBtn');
+        btn.disabled = !el.checked;
+        btn.className = el.checked ? 'btn-start active' : 'btn-start';
+    }
+
+    const fullBank = [
+        "I enjoy working on tasks that require a high level of detail.",
+        "I am comfortable leading a group during a difficult project.",
+        "I prefer to follow a set routine every day at work.",
+        "I am always looking for new ways to solve old problems.",
+        "I find it easy to stay calm even when things go wrong.",
+        "I prioritize team success over my own individual goals.",
+        "I like to plan my work schedule far in advance.",
+        "I am confident in my ability to persuade others.",
+        "I enjoy learning about complex new technical systems.",
+        "I am willing to take calculated risks to achieve better results.",
+        "I am very thorough when checking my work for errors.",
+        "I naturally take charge when a group lacks direction.",
+        "I am comfortable dealing with ambiguity and uncertainty.",
+        "I frequently come up with creative ideas or suggestions.",
+        "I can handle heavy workloads without feeling stressed.",
+        "I go out of my way to help my colleagues with their tasks.",
+        "I make sure all my responsibilities are completed on time.",
+        "I find it easy to start conversations with new people.",
+        "I am interested in understanding the logic behind every process.",
+        "I see obstacles as opportunities to learn and grow.",
+        "I rarely overlook small details in my assignments.",
+        "I enjoy being the person who makes the final decision.",
+        "I can easily switch between different tasks when needed.",
+        "I enjoy brainstorming sessions for innovative projects.",
+        "I remain optimistic even when facing a setback.",
+        "I value collaboration more than competition within a team.",
+        "I am known for being highly organized and disciplined.",
+        "I am effective at negotiating with others to reach a goal.",
+        "I like to explore different perspectives on a problem.",
+        "I am driven to exceed the targets set for me.",
+        "I ensure that my workspace is always neat and orderly.",
+        "I am comfortable giving feedback to my team members.",
+        "I am flexible when my priorities change suddenly.",
+        "I like to challenge the traditional way of doing things.",
+        "I have a high level of patience when dealing with problems.",
+        "I contribute actively to maintain a positive team spirit.",
+        "I set clear goals for myself every single day.",
+        "I am able to build rapport with others very quickly.",
+        "I enjoy analyzing data to find trends or patterns.",
+        "I am always looking for self-improvement opportunities.",
+        "I double-check everything to ensure high quality.",
+        "I feel energized when I have to influence a group.",
+        "I am open to changing my mind based on new evidence.",
+        "I like to try out new and unproven ideas.",
+        "I recover quickly after a stressful situation.",
+        "I share my knowledge freely with my teammates.",
+        "I follow through on every commitment I make.",
+        "I am assertive when I need to get my point across.",
+        "I want to know exactly how things work under the hood.",
+        "I put in extra effort to ensure the project is a success.",
+        "I am persistent when I encounter a difficult task.",
+        "I am skilled at managing multiple stakeholders.",
+        "I enjoy environments that are constantly evolving.",
+        "I am highly dedicated to the vision of my organization.",
+        "I am comfortable making decisions that might be unpopular with the team.",
+        "I actively seek to resolve conflicts between team members.",
+        "I enjoy taking the lead in group discussions.",
+        "I am effective at motivating others to perform their best.",
+        "I find it easy to gain support for my ideas from senior management.",
+        "I prefer to set the direction for a project rather than follow a plan.",
+        "I enjoy mentoring others to help them reach their full potential.",
+        "I am confident when representing my team's interests to others.",
+        "I am willing to take responsibility for the team’s failures.",
+        "I naturally gravitate toward leadership roles in social settings.",
+        "I am able to stay productive even when under intense pressure.",
+        "I enjoy the challenge of learning a completely new software.",
+        "I am comfortable working where priorities change daily.",
+        "I find it easy to adapt my communication style to different people.",
+        "I view unexpected changes as an opportunity for innovation.",
+        "I rarely get frustrated when a project I worked on is canceled.",
+        "I am capable of maintaining focus during long, repetitive tasks.",
+        "I am comfortable working with colleagues from diverse backgrounds.",
+        "I am quick to adjust my work habits if they are not produced results.",
+        "I stay calm when I have to deal with difficult clients.",
+        "I always meet my deadlines, even with extra personal effort.",
+        "I believe it is important to admit a mistake as soon as it happens.",
+        "I maintain a high level of professionalism off the clock.",
+        "I am consistent in my work quality, regardless of how I feel.",
+        "I respect company policies even when I think they are unnecessary.",
+        "I am known for being punctual for all meetings.",
+        "I prioritize ethical behavior over hitting performance targets.",
+        "I am careful to keep confidential information private.",
+        "I believe in giving credit to others for my success.",
+        "I take pride in the accuracy and precision of my work.",
+        "I prefer to reach a consensus before moving forward.",
+        "I am a good listener and try to understand others' points of view.",
+        "I enjoy participating in group activities and team-building.",
+        "I am comfortable asking for help when I am stuck.",
+        "I provide constructive criticism in a way that doesn't offend.",
+        "I am quick to offer praise to my colleagues for their achievements.",
+        "I believe that diverse teams produce better results.",
+        "I make an effort to include quiet team members in discussions.",
+        "I am clear and concise when explaining technical concepts.",
+        "I find it easy to build trust with new team members.",
+        "I enjoy identifying the root cause of a complex problem.",
+        "I am always looking for ways to automate repetitive tasks.",
+        "I believe that data is more important than gut feeling.",
+        "I enjoy researching new industry trends and applying them.",
+        "I am comfortable questioning the status quo.",
+        "I like to break down large projects into small steps.",
+        "I am effective at finding creative solutions with limited resources.",
+        "I enjoy working on projects that have never been done before.",
+        "I am persistent when trying to solve a puzzle.",
+        "I enjoy evaluating the pros and cons of different strategies.",
+        "I avoid office politics and focus on my core responsibilities.",
+        "I am comfortable working in a fast-paced environment.",
+        "I believe that continuous learning is essential for career growth.",
+        "I find it easy to manage my time effectively.",
+        "I am willing to take on tasks outside of my job description.",
+        "I am proactive in identifying potential issues before they arise.",
+        "I prefer to have a clear set of instructions for every task.",
+        "I am highly motivated by achieving professional milestones.",
+        "I feel a sense of accomplishment when I help a colleague.",
+        "I am able to multitask effectively without losing quality.",
+        "I value direct and honest communication from my manager.",
+        "I enjoy analyzing feedback to improve my performance.",
+        "I am comfortable working with limited supervision.",
+        "I believe that a positive attitude is contagious in the workplace.",
+        "I am skilled at managing expectations of different stakeholders.",
+        "I enjoy the process of turning a vague idea into a reality."
+    ];
+
+    let currentQ = 0;
+    let selectedQuestions = [];
+    let totalScore = 0;
+    const labels = ["Strongly disagree", "Disagree", "Slightly disagree", "Neither agree nor disagree", "Slightly agree", "Agree", "Strongly agree"];
+    const scores = [-3, -2, -1, 0, 1, 2, 3];
+
+    function startBehavioral() {
+        selectedQuestions = [...fullBank].sort(() => 0.5 - Math.random()).slice(0, 54);
+        showPop('pop5', 'behavioralAssessment');
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        document.getElementById('qText').innerText = selectedQuestions[currentQ];
+        document.getElementById('qCount').innerText = `${currentQ + 1} / 54`;
+        document.getElementById('pFill').style.width = `${((currentQ + 1) / 54) * 100}%`;
+        const grid = document.getElementById('optionsGrid');
+        grid.innerHTML = '';
+        labels.forEach((label, i) => {
+            const box = document.createElement('div');
+            box.className = 'option-box';
+            box.innerHTML = `<div class="box-num">${i+1}</div><div class="box-label">${label}</div>`;
+            box.onclick = () => {
+                totalScore += scores[i];
+
+                box.classList.add('selected');
+                setTimeout(() => {
+                    if(currentQ < 53) { 
+                        currentQ++; 
+                        renderQuestion(); 
+                    } else { 
+                        showFinalResults();
+                    }
+                }, 250);
+            };
+            grid.appendChild(box);
+        });
+    }
+
+    function getSimpleAssessment(score) {
+        if (score >= 115) {
+            return {
+                title: "Self-Starter & Natural Leader",
+                desc: "You are highly motivated and work well without needing much supervision. You enjoy taking charge of projects and finding new ways to solve problems.",
+                strengths: ["Takes initiative on difficult tasks", "Stays calm under pressure", "Good at influencing others", "Focuses on high-quality results"]
+            };
+        } else if (score >= 50) {
+            return {
+                title: "Reliable & Cooperative Team Member",
+                desc: "You are a dependable worker who follows instructions well and values teamwork. You prefer a stable work environment where everyone helps each other.",
+                strengths: ["Follows company rules and policies", "Very reliable with deadlines", "Works well with different types of people", "Maintains a positive attitude"]
+            };
+        } else {
+            return {
+                title: "Task-Focused Contributor",
+                desc: "You prefer to focus on one task at a time and follow a set routine. You work best when you have clear instructions and a quiet environment.",
+                strengths: ["Good at detailed tasks", "Respects established work methods", "Prefers clear, step-by-step guidance", "Focuses on individual responsibilities"]
+            };
+        }
+    }
+
+    function showFinalResults() {
+    const assessment = getSimpleAssessment(totalScore);
+    
+    localStorage.setItem("beh_score", Math.abs(totalScore));
+    localStorage.setItem("profile_title", assessment.title);
+    localStorage.setItem("profile_desc", assessment.desc);
+    localStorage.setItem("profile_strengths", JSON.stringify(assessment.strengths));
+
+    window.location.href = "timer.html";
+}
+</script>
+</body>
+</html>

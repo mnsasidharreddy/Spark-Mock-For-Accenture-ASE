@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Results - Not Eligible</title>
+    <style>
+        /* Modern reset and centering */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #fcfcfc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #666;
+            user-select: none;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .thanks-text {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: #777;
+        }
+
+        .regret-message {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #d32f2f; /* Professional red */
+            margin-bottom: 25px;
+        }
+
+        /* Styled Exit Button */
+        .exit-btn {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .exit-btn:hover {
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+    <div class="logo">SPARK<span>.</span></div>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+</nav>
+    <div class="container">
+        <div class="thanks-text">Thanks for attending the test</div>
+        <div class="regret-message">We regret to inform you that you are not eligible for the next test.</div>
+        
+        <button class="exit-btn" onclick="window.location.href='./result2.html'">Click Here to View Your Results</button>
+    </div>
+
+</body>
+</html>

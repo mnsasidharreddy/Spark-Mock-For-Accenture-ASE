@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assessment System - Spark</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --company-green: #008751; 
+            --company-blue: #4a90e2; 
+            --deep-black: #000000; 
+            --cell-bg: #d6d6d6;
+            --player-bg: #555555;
+            --wall-red: #ff4d4d;
+        }
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background: #f0f0f0; 
+            height: 100vh; 
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; 
+            user-select: none;
+        }
+
+        nav { 
+            position: fixed; top: 0; left: 0; width: 100%;
+            background: var(--deep-black); color: white; padding: 15px 40px; 
+            display: flex; align-items: center; font-weight: 600; font-size: 30px; 
+            z-index: 2000; box-sizing: border-box;
+        }
+        nav span { color: var(--company-blue); }
+        
+        footer { 
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--deep-black); padding: 10px 40px; 
+            display: flex; justify-content: flex-end; font-size: 20px; 
+            color: #bbb; z-index: 2000; box-sizing: border-box;
+        }
+        .heart { color: #e74c3c; margin: 0 4px; }
+
+        #main-content-wrapper {
+            flex: 1; margin-top: 60px; margin-bottom: 40px;
+            display: flex; flex-direction: column; position: relative;
+        }
+
+        #landingPage { flex: 1; display: flex; justify-content: center; align-items: center; }
+        .action-bar { background: #e0e0e0; padding: 15px 40px; display: flex; justify-content: flex-end; border-top: 1px solid #ccc; }
+
+        .blurred { filter: blur(8px); pointer-events: none; }
+        .hidden { display: none !important; }
+
+        .overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.1); display: flex; justify-content: center; 
+            align-items: center; z-index: 1500; 
+        }
+
+        .modal { 
+            background: white; width: 85%; max-width: 800px; border-radius: 4px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative; z-index: 1600;
+        }
+
+        .content { padding: 60px 80px; text-align: left; }
+        .instruction-card { background: white; padding: 50px 70px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+
+        #game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #grid { display: grid; gap: 4px; background: #999; border: 4px solid #999; }
+        .cell { 
+            width: 70px; height: 70px; background: #d6d6d6; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 32px; box-sizing: border-box; position: relative;
+        }
+        .player { background: #555 !important; }
+
+        .hit-top { border-top: 5px solid var(--wall-red) !important; }
+        .hit-bottom { border-bottom: 5px solid var(--wall-red) !important; }
+        .hit-left { border-left: 5px solid var(--wall-red) !important; }
+        .hit-right { border-right: 5px solid var(--wall-red) !important; }
+
+        #game-ui { 
+            margin-top: 20px; display: flex; align-items: center; gap: 25px; 
+            padding: 10px 30px; background: transparent; 
+        }
+        #timer-circle { 
+            width: 50px; height: 50px; border: 3px solid #333; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; font-weight: bold; 
+        }
+
+        .btn-next { background: var(--company-green); color: white; border: none; padding: 12px 45px; cursor: pointer; font-weight: bold; text-transform: uppercase; }
+        .arrow { position: absolute; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 30px; padding: 20px; }
+        .arrow-left { left: 10px; } .arrow-right { right: 10px; }
+        .dots-container { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #888; }
+        .dot.active { background: #333; border-color: #333; }
+        .shake { animation: shake 0.4s; }
+        .navbar {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-size: 16px; 
+        text-align: center;
+        font-weight: bold;
+        width: auto;
+        white-space: nowrap;
+    }
+    /* This makes the trail gray */
+.cell.visited {
+    background-color: #bbbbbb !important; /* Darker gray so you can actually see it */
+    border: 1px solid #999;
+}
+/* This ensures the player icon cell also shows the gray background */
+.cell.player.visited {
+    background-color: #bbbbbb !important;
+}
+/* This ensures the player cell also stays gray while standing on it */
+.cell.player {
+    background-color: #555 !important;
+    color: white;
+}
+
+/* Optional: Smooth transition for the effect */
+.cell {
+    transition: background-color 0.2s ease;
+}
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    </style>
+</head>
+<body>
+
+<nav>
+    SPARK<span>.</span>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+</nav>
+
+<div id="main-content-wrapper">
+    <div id="landingPage">
+        <div class="instruction-card">
+            <p>This practice exercise will provide you with instructions and practice items for a task designed to measure <strong>perceptual ability</strong>.</p>
+            <p>Please take the time to read the instructions carefully and use the practice items to familiarize yourself with the task.</p>
+        </div>
+    </div>
+
+    <div id="actionBar" class="action-bar">
+        <button class="btn-next" onclick="startPopups()">Next</button>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="grid"></div>
+        <div id="game-ui">
+            <div id="timer-circle">5:00</div>
+            <div id="instruction-text">Collect <b>1 KEY</b> then get to the <b>DOOR</b></div>
+        </div>
+    </div>
+</div>
+
+<div id="popupOverlay" class="overlay hidden">
+    <div class="modal">
+        <div class="content">
+            <div id="prevArrow" class="arrow arrow-left" onclick="changeStep(-1)">❮</div>
+            <div id="popupContent"></div>
+            <div id="nextArrow" class="arrow arrow-right" onclick="changeStep(1)">❯</div>
+            <div class="dots-container"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    with <span class="heart">❤️</span> SASIDHAR
+</footer>
+
+<script>
+    // --- Configuration & State ---
+    let currentStep = 0;
+    let score = 0;
+    let timerInterval;
+    let currentLevel = 1;
+    let timeLeft = 300; // Set to 30 for testing, change to 300 for 5 mins
+    
+    let player = [0,0], startPos = [0,0], door = [0,0];
+    let walls = new Set();
+    let keys = [];
+    let collectedIndices = new Set();
+    let visitedCells = new Set(); // Tracks the gray path
+
+    const messages = [
+        "In this exercise, you must move between boxes in a grid that contains a maze of invisible walls. You can navigate up, down, left or right, but NOT diagonally. You can also navigate back over the path you have taken.",
+        "Each time you hit a wall, you will be returned back to the beginning of the maze and must start over. <b>The walls do not move, but you must remember where they are located.</b>",
+        "Your goal is to <b>collect the key</b> and <b>reach the door</b> in the least number of attempts. If there are two keys, collect both before navigating to the door.",
+        "You do not need to rush. However, if you have been unable to solve the maze within the time limit, you will progress automatically. A timer is located below the maze.",
+        "Click below button to <strong>START TEST</strong>.<br><br><center><button class='btn-next' onclick='initGame()'>START TEST</button></center>"
+    ];
+
+    // --- Popup Logic ---
+    function startPopups() {
+        document.getElementById('landingPage').classList.add('hidden');
+        document.getElementById('actionBar').classList.add('hidden');
+        document.getElementById('popupOverlay').classList.remove('hidden');
+        document.getElementById('main-content-wrapper').classList.add('blurred');
+        updatePopup();
+    }
+
+    function changeStep(dir) {
+        currentStep += dir;
+        updatePopup();
+    }
+
+    function updatePopup() {
+        document.getElementById('popupContent').innerHTML = messages[currentStep];
+        document.getElementById('prevArrow').style.visibility = (currentStep === 0) ? 'hidden' : 'visible';
+        document.getElementById('nextArrow').style.visibility = (currentStep === 4) ? 'hidden' : 'visible';
+        document.querySelectorAll('.dot').forEach((dot, i) => dot.classList.toggle('active', i === currentStep));
+    }
+
+    // --- Game Initialization ---
+    function initGame() {
+        document.getElementById('popupOverlay').classList.add('hidden');
+        document.getElementById('main-content-wrapper').classList.remove('blurred');
+        document.getElementById('game-container').classList.remove('hidden');
+        startGlobalTimer();
+        startLevel();
+    }
+
+    // --- Maze Generation Logic ---
+    function wallKey(r1,c1,r2,c2) { 
+        return `${Math.min(r1,r2)},${Math.min(c1,c2)}|${Math.max(r1,r2)},${Math.max(c1,c2)}`; 
+    }
+
+    function isAdjacent(pos1, pos2) {
+        return Math.abs(pos1[0] - pos2[0]) <= 1 && Math.abs(pos1[1] - pos2[1]) <= 1;
+    }
+
+    function hasWallBetween(pos1, pos2, currentWalls) {
+        if (pos1[0] !== pos2[0] && pos1[1] !== pos2[1]) return true; 
+        if (pos1[0] === pos2[0]) {
+            let r = pos1[0], sC = Math.min(pos1[1], pos2[1]), eC = Math.max(pos1[1], pos2[1]);
+            for (let c = sC; c < eC; c++) if (currentWalls.has(wallKey(r, c, r, c + 1))) return true;
+        } else {
+            let c = pos1[1], sR = Math.min(pos1[0], pos2[0]), eR = Math.max(pos1[0], pos2[0]);
+            for (let r = sR; r < eR; r++) if (currentWalls.has(wallKey(r, c, r + 1, c))) return true;
+        }
+        return false;
+    }
+
+    function canReach(start, target, currentWalls, size) {
+        let q = [start], v = new Set([`${start[0]},${start[1]}`]);
+        while(q.length > 0) {
+            let [r, c] = q.shift();
+            if(r === target[0] && c === target[1]) return true;
+            [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr, dc]) => {
+                let nr = r+dr, nc = c+dc;
+                if(nr>=0 && nr<size && nc>=0 && nc<size && !v.has(`${nr},${nc}`) && !currentWalls.has(wallKey(r,c,nr,nc))) {
+                    v.add(`${nr},${nc}`); q.push([nr,nc]);
+                }
+            });
+        }
+        return false;
+    }
+
+    function startLevel() {
+        const grid = document.getElementById('grid');
+        let size = 2 + currentLevel; 
+        grid.style.gridTemplateColumns = `repeat(${size}, 70px)`;
+        let validLayout = false, attempts = 0;
+
+        while (!validLayout && attempts < 200) {
+            attempts++;
+            let allPoss = [];
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (r + 1 < size) allPoss.push(wallKey(r, c, r + 1, c));
+                    if (c + 1 < size) allPoss.push(wallKey(r, c, r, c + 1));
+                }
+            }
+
+            let cells = Array.from({length: size*size}, (_, i) => i).sort(() => Math.random() - 0.5);
+            let placed = [];
+            const getP = () => {
+                for(let i=0; i<cells.length; i++) {
+                    let p = [Math.floor(cells[i]/size), cells[i]%size];
+                    if(placed.every(pl => !isAdjacent(pl, p))) {
+                        cells.splice(i, 1); placed.push(p); return p;
+                    }
+                }
+                return null;
+            };
+
+            startPos = getP(); door = getP(); keys = [];
+            let nK = currentLevel >= 3 ? 2 : 1;
+            for(let i=0; i<nK; i++) { let k = getP(); if(k) keys.push(k); }
+
+            if (!startPos || keys.length < nK) continue;
+
+            let critical = new Set();
+            keys.forEach(k => {
+                if (startPos[0] === k[0]) {
+                    let r = startPos[0], sC = Math.min(startPos[1], k[1]), eC = Math.max(startPos[1], k[1]);
+                    critical.add(wallKey(r, Math.floor((sC+eC)/2), r, Math.floor((sC+eC)/2)+1));
+                } else if (startPos[1] === k[1]) {
+                    let c = startPos[1], sR = Math.min(startPos[0], k[0]), eR = Math.max(startPos[0], k[0]);
+                    critical.add(wallKey(Math.floor((sR+eR)/2), c, Math.floor((sR+eR)/2)+1, c));
+                }
+            });
+
+            // Wall logic: Level 1 = 1 wall, Else = (L+1)*L
+            let targetW = (currentLevel === 1) ? 1 : (currentLevel + 1) * currentLevel;
+            let fW = Array.from(critical);
+            
+            if (currentLevel === 1) fW = fW.slice(0, 1);
+
+            let remO = allPoss.filter(w => !critical.has(w)).sort(() => Math.random() - 0.5);
+            while (fW.length < targetW && remO.length > 0) fW.push(remO.pop());
+            walls = new Set(fW);
+
+            if (keys.every(k => hasWallBetween(startPos, k, walls)) && keys.every(k => hasWallBetween(k, door, walls)) && canReach(startPos, door, walls, size)) validLayout = true;
+        }
+
+        player = [...startPos]; 
+        collectedIndices.clear(); 
+        visitedCells.clear();
+        visitedCells.add(`${player[0]},${player[1]}`); // Mark start as visited
+        updateInstruction(); 
+        renderGrid();
+    }
+
+    // --- Rendering ---
+    function renderGrid(hitSide = null) {
+        const g = document.getElementById('grid'); g.innerHTML = "";
+        let size = 2 + currentLevel;
+        for(let r=0; r<size; r++) {
+            for(let c=0; c<size; c++) {
+                const cell = document.createElement('div');
+                cell.className = "cell";
+                
+                // Apply gray background to visited path
+                if(visitedCells.has(`${r},${c}`)) {
+                    cell.classList.add('visited');
+                }
+
+                if(player[0]===r && player[1]===c) {
+                    cell.classList.add('player'); cell.innerHTML = "👤";
+                    if(hitSide) cell.classList.add(`hit-${hitSide}`);
+                }
+                else if(door[0]===r && door[1]===c) cell.innerHTML = "🚪";
+                else {
+                    let kIdx = keys.findIndex(k => k[0]===r && k[1]===c);
+                    if(kIdx !== -1 && !collectedIndices.has(kIdx)) cell.innerHTML = "🔑";
+                }
+                g.appendChild(cell);
+            }
+        }
+    }
+
+    function updateInstruction() {
+        const text = document.getElementById('instruction-text');
+        let rem = keys.length - collectedIndices.size;
+        text.innerHTML = rem > 0 ? `Collect <b>${rem} KEY${rem>1?'S':''}</b> then get to the <b>DOOR</b>` : `Now get to the <b>DOOR</b>`;
+    }
+
+    // --- Movement Logic ---
+    function move(dr, dc) {
+        if(!document.getElementById('popupOverlay').classList.contains('hidden')) return;
+        let nr = player[0]+dr, nc = player[1]+dc, size = 2 + currentLevel;
+        if(nr<0 || nr>=size || nc<0 || nc>=size) return;
+        
+        let side = dr === -1 ? "top" : dr === 1 ? "bottom" : dc === -1 ? "left" : "right";
+        
+        // Wall Collision
+        if(walls.has(wallKey(player[0], player[1], nr, nc))) {
+            document.getElementById('grid').classList.add('shake'); renderGrid(side);
+            setTimeout(() => {
+                document.getElementById('grid').classList.remove('shake');
+                player = [...startPos]; 
+                collectedIndices.clear(); 
+                visitedCells.clear(); // Reset gray path on hit
+                visitedCells.add(`${startPos[0]},${startPos[1]}`);
+                updateInstruction(); 
+                renderGrid();
+            }, 400);
+            return;
+        }
+
+        player = [nr, nc];
+        visitedCells.add(`${nr},${nc}`); // Add to path
+        
+        keys.forEach((k, i) => { if(k[0]===nr && k[1]===nc) collectedIndices.add(i); });
+        updateInstruction();
+        
+        // Win Condition
+        if(nr===door[0] && nc===door[1] && collectedIndices.size === keys.length) { 
+            score++;
+            currentLevel++; 
+            startLevel(); 
+        } 
+        else renderGrid();
+    }
+
+    // --- Timer & Redirect ---
+    function startGlobalTimer() {
+        timerInterval = setInterval(() => {
+            if(timeLeft > 0) {
+                timeLeft--;
+                let m = Math.floor(timeLeft/60), 
+                    s = String(timeLeft%60).padStart(2, '0');
+                
+                const timerEl = document.getElementById('timer-circle');
+                if(timerEl) timerEl.textContent = `${m}:${s}`;
+            } else {
+                clearInterval(timerInterval);
+                localStorage.setItem("mazeScore", score);
+                window.location.href = "timer2.html";
+            }
+        }, 1000);
+    }
+
+    // --- Controls ---
+    document.addEventListener('keydown', e => {
+        if(e.key === "ArrowUp") move(-1,0);
+        if(e.key === "ArrowDown") move(1,0);
+        if(e.key === "ArrowLeft") move(0,-1);
+        if(e.key === "ArrowRight") move(0,1);
+    });
+</script>
+</body>
+</html>

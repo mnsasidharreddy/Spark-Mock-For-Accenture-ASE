@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Eligibility Success</title>
+    <style>
+        body{
+            overflow: hidden;
+            margin:0;
+            user-select: none;
+        }
+        .container {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #666;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .thanks-text {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: #777;
+        }
+
+        .congrats-message {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #008751; 
+            margin-bottom: 12px;
+        }
+
+        .instruction-text {
+            font-size: 1rem;
+            margin-bottom: 25px;
+            color: #888;
+        }
+
+        .btn {
+            background-color: #008751;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: #006b40;
+        }
+
+        .page-footer {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 40px;
+      background: black; display: flex; align-items: center; 
+      justify-content: end; 
+      padding-right: 20px; 
+      z-index: 2000; font-size: 20px; color: white;
+      box-sizing: border-box;
+    }
+    .heart { color: #e74c3c; margin: 0 5px; }
+    nav { 
+        background: black; 
+        height: 60px; 
+        display: flex; 
+        align-items: center; 
+        padding: 0 30px; 
+        position: relative; 
+    }
+    .logo { 
+      font-weight: bold; 
+      font-size: 30px; 
+      letter-spacing: 2px; 
+      color: white; 
+      z-index: 10;
+    }
+
+    .logo span { color: #007bff; }
+
+    .navbar {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-size: 16px; 
+        text-align: center;
+        font-weight: bold;
+        width: auto;
+        white-space: nowrap;
+    }
+    </style>
+</head>
+<body>
+    <nav>
+    <div class="logo">SPARK<span>.</span></div>
+    <div class="navbar" >
+    Please note: Your video and audio is being recorded.It will be reviewed to check for integrity.
+    </div>
+  </nav>
+
+    <div class="container">
+        <div class="thanks-text">Thanks for attending the test</div>
+        <div class="congrats-message">Congratulations! You are eligible for the next test.</div>
+        <div class="instruction-text">Please click the button below to proceed</div>
+        
+        <a href="./bubbleGame.html" class="btn">Take me to next test</a>
+    </div>
+
+    <footer class="page-footer" id="mainFooter">
+        with <span class="heart">&#x2764;</span> SASIDHAR
+    </footer>
+</body>
+</html>

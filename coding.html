@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spark | Unified Assessment Platform</title>
+    <style>
+        :root { 
+            --bg: #ffffff; --panel: #f6f8fa; --border: #d0d7de;
+            --accent: #007bff; --text: #24292f; --sub: #57606a; 
+            --editor-bg: #ffffff; --console-bg: #f6f8fa;
+        }
+
+        body, html { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; display: flex; flex-direction: column; }
+        
+        header { height: 55px; background: #000; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; color: white; }
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .spark-logo { font-weight: 800; font-size: 22px; color: #fff; }
+        #mod-selector { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+        #timer { font-family: monospace; font-size: 20px; font-weight: bold; border: 2px solid #007bff; padding: 2px 12px; border-radius: 4px; background: #fff; color: #007bff; }
+        #timer.warning { border-color: #ffc107; color: #ffc107; }
+        #timer.danger { border-color: #dc3545; color: #dc3545; }
+
+        .main-container { display: flex; flex-grow: 1; overflow: hidden; }
+        .left-panel { width: 30%; padding: 25px; border-right: 1px solid var(--border); overflow-y: auto; background: var(--panel); line-height: 1.5; }
+        .right-panel { width: 70%; display: flex; flex-direction: column; background: #fff; }
+        
+        .top-half { height: 60%; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); position: relative; }
+        .bottom-half { height: 40%; background: var(--console-bg); display: flex; flex-direction: column; }
+        
+        .editor-controls { background: #f1f3f5; display: flex; align-items: center; height: 40px; padding: 0 10px; border-bottom: 1px solid var(--border); gap: 10px; }
+        #lang-selector { background: white; color: black; border: 1px solid var(--border); padding: 4px; border-radius: 4px; font-size: 12px; }
+        
+        .etab { padding: 4px 12px; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--sub); font-size: 12px; border-radius: 4px; }
+        .etab.active { background: white; color: var(--accent); border-color: var(--border); font-weight: 600; }
+
+        .tab-bar { background: #eee; display: flex; min-height: 40px; border-bottom: 1px solid var(--border); }
+        .tab { padding: 0 20px; cursor: pointer; border: none; background: transparent; color: var(--sub); font-size: 13px; display: flex; align-items: center; border-right: 1px solid var(--border); }
+        .tab.active { background: var(--bg); color: var(--accent); font-weight: bold; border-top: 2px solid var(--accent); }
+        
+        textarea { flex-grow: 1; background: var(--editor-bg); color: #000; border: none; padding: 15px; font-family: 'SFMono-Regular', Consolas, monospace; resize: none; outline: none; font-size: 14px; line-height: 1.6; }
+        
+        .resource-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border: 1px solid var(--border); }
+        .resource-table th, .resource-table td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; font-size: 12px; }
+        .resource-table th { background: #f0f0f0; font-weight: 600; }
+
+        .hidden { display: none !important; }
+        
+        .action-bar { height: 60px; background: #fff; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; border-top: 1px solid var(--border); }
+        .btn-action { padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; border: 1px solid var(--border); font-weight: 600; transition: all 0.2s; }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-run { background: #f6f8fa; color: #24292f; }
+        .btn-run:hover:not(:disabled) { background: #e1e4e8; }
+        .btn-submit { background: #24292f; color: white; }
+        .btn-submit:hover:not(:disabled) { background: #1a1f24; }
+        .btn-save { background: #007bff; color: white; border-color: #007bff; }
+        .btn-save:hover:not(:disabled) { background: #0056b3; }
+        .btn-final { background: #dc3545; color: white; border-color: #dc3545; }
+
+        #toast { position: fixed; top: 20px; right: 20px; background: #24292f; color: white; padding: 12px 24px; border-radius: 8px; display: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        #toast.success { background: #28a745; }
+        #toast.error { background: #dc3545; }
+        #toast.warning { background: #ffc107; color: #000; }
+        
+        footer { background: #000; color: white; text-align: right; padding: 10px 20px; font-size: 18px; border-top: 1px solid var(--border); }
+        
+        .sandbox-frame { width: 100%; height: 100%; border: none; background: white; }
+        
+        .q-section { margin-bottom: 20px; }
+        .q-label { font-weight: bold; color: var(--accent); text-transform: uppercase; font-size: 11px; margin-bottom: 5px; display: block; }
+        
+        .output-container { padding: 15px; overflow: auto; height: 100%; }
+        .output-error { color: #dc3545; }
+        .output-success { color: #28a745; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; padding: 30px; border-radius: 8px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .modal h3 { margin-top: 0; color: var(--text); }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .modal-btn { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; border: 1px solid var(--border); font-weight: 600; }
+        .modal-btn-primary { background: #007bff; color: white; border-color: #007bff; }
+        .modal-btn-secondary { background: #f6f8fa; color: #24292f; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-area">
+        <div class="spark-logo">SPARK<span style="color:#007bff">.</span></div>
+        <select id="mod-selector">
+            <option value="sql">Database (SQL)</option>
+            <option value="backend">Backend (DSA)</option>
+            <option value="frontend">Frontend (Web)</option>
+        </select>
+    </div>
+    <div id="timer">60:00</div>
+</header>
+
+<div class="main-container">
+    <div class="left-panel" id="question-panel"></div>
+    <div class="right-panel">
+        <div class="top-half">
+            <div id="editor-ctrl-bar" class="editor-controls hidden">
+                <select id="lang-selector" class="hidden">
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="csharp">C#</option>
+                </select>
+                <div id="frontend-tabs" class="hidden">
+                    <button class="etab active" data-file="html">index.html</button>
+                    <button class="etab" data-file="css">style.css</button>
+                    <button class="etab" data-file="js">script.js</button>
+                </div>
+            </div>
+            <textarea id="editor" spellcheck="false" aria-label="Code editor">--write your sql query below
+
+</textarea>
+        </div>
+        <div class="bottom-half">
+            <div class="tab-bar">
+                <button id="tab-out-btn" class="tab active">Output/Preview</button>
+                <button id="tab-res-btn" class="tab">Resources</button>
+            </div>
+            <div id="view-out" class="output-container"></div>
+            <div id="view-res" class="hidden output-container">
+                <div id="res-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="action-bar">
+    <div id="status" style="font-size: 12px; color: var(--sub);">Status: Active | Auto-save: ON</div>
+    <div style="display:flex; gap:10px;">
+        <button id="btn-run" class="btn-action btn-run">Run Code</button>
+        <button id="btn-submit" class="btn-action btn-submit">Run Test Cases</button>
+        <button id="btn-save" class="btn-action btn-save">Save & Next</button>
+    </div>
+</div>
+
+<footer>with <span style="color:red">❤</span> SASIDHAR</footer>
+
+<div id="toast"></div>
+
+<!-- Modal for confirmations -->
+<div id="modal-overlay" class="modal-overlay">
+    <div class="modal">
+        <h3 id="modal-title">Confirm Action</h3>
+        <p id="modal-message"></p>
+        <div class="modal-buttons">
+            <button id="modal-cancel" class="modal-btn modal-btn-secondary">Cancel</button>
+            <button id="modal-confirm" class="modal-btn modal-btn-primary">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================================
+// SPARK ASSESSMENT PLATFORM - STANDALONE VERSION
+// All functionality in one file - HTML, CSS, and JavaScript
+// ============================================================================
+
+class SparkApp {
+    constructor() {
+        this.sessionId = this.generateSessionId();
+        this.currentModule = 'sql';
+        this.currentFile = 'html';
+        this.timeRemaining = 3600; // 60 minutes
+        this.timerInterval = null;
+        this.autoSaveInterval = null;
+        this.previewTimeout = null;
+        this.sectionsSaved = new Set();
+        this.isSubmitted = false;
+        this.hasUnsavedChanges = false;
+        this.scores = { sql: 0, backend: 0, frontend: 0 };
+        
+        // In-memory database for SQL
+        this.database = this.initDatabase();
+        
+        // Extended Question Bank (4 per module)
+        this.questionBank = {
+            sql: [
+                {
+                    title: "Second Highest Salary",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Staff</b></li><li>Find the person with the <b>second highest</b> salary</li><li>Show their name and salary</li></ul></div>`,
+                    refQuery: "select Name, Salary from Staff order by Salary desc limit 1 offset 1"
+                },
+                {
+                    title: "Team Members",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have two tables: <b>Users</b> and <b>Teams</b></li><li>Join them to find which team each user belongs to</li><li>Show the <b>UserName</b> and their <b>TeamName</b></li></ul></div>`,
+                    refQuery: "select UserName, TeamName from Users join Teams on Users.TeamID = Teams.TeamID"
+                },
+                {
+                    title: "Inventory Alert",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Inventory</b></li><li>Find all items where <b>Stock</b> is less than 20</li><li>Show the <b>ItemName</b> and <b>Stock</b> level</li></ul></div>`,
+                    refQuery: "select ItemName, Stock from Inventory where Stock < 20"
+                },
+                {
+                    title: "Big Sales",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>You have a table called <b>Sales</b></li><li>List all sales where the <b>Amount</b> is greater than 500</li><li>Order the results by <b>Amount</b> (Highest first)</li></ul></div>`,
+                    refQuery: "select OrderID, Amount from Sales where Amount > 500 order by Amount desc"
+                }
+            ],
+            backend: [
+                {
+                    title: "Target Sum",
+                    content: `<div class="q-section"><span class="q-label">Task</span><p>Find the positions of two distinct numbers in a list that add up to a target goal.</p></div><div class="q-section"><span class="q-label">Sample Input</span><p>nums = [2, 7, 11, 15], target = 9</p></div><div class="q-section"><span class="q-label">Sample Output</span><p>[0, 1]</p></div>`,
+                    testCases: [
+                        { input: "[2, 7, 11, 15], 9", expected: "[0, 1]" },
+                        { input: "[3, 2, 4], 6", expected: "[1, 2]" },
+                        { input: "[3, 3], 6", expected: "[0, 1]" }
+                    ]
+                },
+                {
+                    title: "Max Finder",
+                    content: `<div class="q-section"><span class="q-label">Task</span><p>Find the largest (maximum) number in a provided list of integers.</p></div><div class="q-section"><span class="q-label">Sample Input</span><p>nums = [1, 5, 2, 8, 3]</p></div><div class="q-section"><span class="q-label">Sample Output</span><p>8</p></div>`,
+                    testCases: [
+                        { input: "[1, 5, 2, 8, 3]", expected: "8" },
+                        { input: "[-1, -5, -2]", expected: "-1" },
+                        { input: "[10, 20, 5, 15]", expected: "20" }
+                    ]
+                },
+                {
+                    title: "List Total",
+                    content: `<div class="q-section"><span class="q-label">Task</span><p>Calculate the sum of all integers in a provided list.</p></div><div class="q-section"><span class="q-label">Sample Input</span><p>nums = [10, 20, 30]</p></div><div class="q-section"><span class="q-label">Sample Output</span><p>60</p></div>`,
+                    testCases: [
+                        { input: "[10, 20, 30]", expected: "60" },
+                        { input: "[1, 2, 3, 4, 5]", expected: "15" },
+                        { input: "[-5, 5, 10]", expected: "10" }
+                    ]
+                },
+                {
+                    title: "Even Count",
+                    content: `<div class="q-section"><span class="q-label">Task</span><p>Count how many numbers in a provided list are even numbers.</p></div><div class="q-section"><span class="q-label">Sample Input</span><p>nums = [1, 2, 3, 4, 5, 6]</p></div><div class="q-section"><span class="q-label">Sample Output</span><p>3</p></div>`,
+                    testCases: [
+                        { input: "[1, 2, 3, 4, 5, 6]", expected: "3" },
+                        { input: "[7, 9, 11]", expected: "0" },
+                        { input: "[2, 4, 6, 8, 10]", expected: "5" }
+                    ]
+                }
+            ],
+            frontend: [
+                {
+                    title: "Toggle Mode",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>Create a button with text "Toggle Mode"</li><li>Set the background color to #007bff (blue)</li><li>When clicked, change the background color to white</li></ul></div>`,
+                    requiredKeywords: ["addEventListener", "click", "backgroundColor", "style"],
+                    requiredElements: ["button"]
+                },
+                {
+                    title: "Click Handler",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>Create a button with text "Click Me"</li><li>When the button is clicked, change its text to "Clicked!"</li></ul></div>`,
+                    requiredKeywords: ["addEventListener", "innerText", "textContent"],
+                    requiredElements: ["button"]
+                },
+                {
+                    title: "Hide Element",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>Create a button with text "Hide Me"</li><li>When the button is clicked, make it disappear (hide it)</li></ul></div>`,
+                    requiredKeywords: ["display", "none", "addEventListener", "style"],
+                    requiredElements: ["button"]
+                },
+                {
+                    title: "Larger Text",
+                    content: `<div class="q-section"><span class="q-label">Instructions</span><ul><li>Create a button with text "Make Large"</li><li>When clicked, increase the button's font size to 30px</li></ul></div>`,
+                    requiredKeywords: ["fontSize", "30px", "style", "addEventListener"],
+                    requiredElements: ["button"]
+                }
+            ]
+        };
+
+        // Select random indices for this session
+        this.selectedQuestions = {
+            sql: Math.floor(Math.random() * 4),
+            backend: Math.floor(Math.random() * 4),
+            frontend: Math.floor(Math.random() * 4)
+        };
+
+        // Session data
+        this.sessionData = {
+            sql: "--write your sql query below\n\n",
+            backend: "def solve(nums, target):\n    # TODO: Implement logic\n    pass",
+            frontend: {
+                html: '<div class="container">\n  <h1 id="title">Instructions Followed</h1>\n  <button id="btn">Action Button</button>\n</div>',
+                css: "/* Write your CSS here */\n.container { text-align: center; margin-top: 50px; padding: 20px; }\n#btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }",
+                js: "// Write your JavaScript here\ndocument.getElementById('btn').onclick = () => {\n  // Add your logic here\n};"
+            }
+        };
+
+        this.init();
+    }
+
+    generateSessionId() {
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    initDatabase() {
+        return {
+            Staff: [
+                {ID: 101, Name: "Arjun", Salary: 75000},
+                {ID: 102, Name: "Sita", Salary: 92000},
+                {ID: 103, Name: "Rahul", Salary: 81000},
+                {ID: 104, Name: "Priya", Salary: 65000},
+                {ID: 105, Name: "Vikram", Salary: 98000},
+                {ID: 106, Name: "Anjali", Salary: 72000},
+                {ID: 107, Name: "Deepak", Salary: 88000},
+                {ID: 108, Name: "Meena", Salary: 69000},
+                {ID: 109, Name: "Rohan", Salary: 94000},
+                {ID: 110, Name: "Kavita", Salary: 77000}
+            ],
+            Users: [
+                {UserID: 1, UserName: "Amit", TeamID: 10},
+                {UserID: 2, UserName: "Neha", TeamID: 20},
+                {UserID: 3, UserName: "Kunal", TeamID: 10},
+                {UserID: 4, UserName: "Anjali", TeamID: 30},
+                {UserID: 5, UserName: "Raj", TeamID: 20},
+                {UserID: 6, UserName: "Ishaan", TeamID: 40},
+                {UserID: 7, UserName: "Sanya", TeamID: 50},
+                {UserID: 8, UserName: "Kabir", TeamID: 10},
+                {UserID: 9, UserName: "Zoya", TeamID: 30}
+            ],
+            Teams: [
+                {TeamID: 10, TeamName: "Alpha"},
+                {TeamID: 20, TeamName: "Beta"},
+                {TeamID: 30, TeamName: "Gamma"},
+                {TeamID: 40, TeamName: "Delta"},
+                {TeamID: 50, TeamName: "Epsilon"},
+                {TeamID: 60, TeamName: "Zeta"},
+                {TeamID: 70, TeamName: "Eta"},
+                {TeamID: 80, TeamName: "Theta"}
+            ],
+            Inventory: [
+                {ItemID: 1, ItemName: "Laptop", Stock: 50},
+                {ItemID: 2, ItemName: "Mouse", Stock: 15},
+                {ItemID: 3, ItemName: "Keyboard", Stock: 25},
+                {ItemID: 4, ItemName: "Monitor", Stock: 8},
+                {ItemID: 5, ItemName: "Webcam", Stock: 12},
+                {ItemID: 6, ItemName: "Headset", Stock: 40},
+                {ItemID: 7, ItemName: "Printer", Stock: 5},
+                {ItemID: 8, ItemName: "USB Cable", Stock: 100},
+                {ItemID: 9, ItemName: "Tablet", Stock: 18},
+                {ItemID: 10, ItemName: "Stylus", Stock: 30}
+            ],
+            Sales: [
+                {OrderID: 1, Amount: 1200, Date: "2024-01-01"},
+                {OrderID: 2, Amount: 350, Date: "2024-01-02"},
+                {OrderID: 3, Amount: 600, Date: "2024-01-03"},
+                {OrderID: 4, Amount: 950, Date: "2024-01-04"},
+                {OrderID: 5, Amount: 150, Date: "2024-01-05"},
+                {OrderID: 6, Amount: 2100, Date: "2024-01-06"},
+                {OrderID: 7, Amount: 450, Date: "2024-01-07"},
+                {OrderID: 8, Amount: 800, Date: "2024-01-08"},
+                {OrderID: 9, Amount: 110, Date: "2024-01-09"},
+                {OrderID: 10, Amount: 550, Date: "2024-01-10"},
+                {OrderID: 11, Amount: 720, Date: "2024-01-11"},
+                {OrderID: 12, Amount: 400, Date: "2024-01-12"}
+            ]
+        };
+    }
+
+    init() {
+        // Clear old localStorage key to force fresh session
+        localStorage.removeItem('spark_session');
+        
+        // Load saved session if exists
+        this.loadFromLocalStorage();
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Start timer
+        this.startTimer();
+        
+        // Start auto-save
+        this.startAutoSave();
+        
+        // Set up page unload warning
+        window.addEventListener('beforeunload', (e) => {
+            if (this.hasUnsavedChanges && !this.isSubmitted) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Continue?';
+                return e.returnValue;
+            }
+        });
+
+        // Always start with SQL on refresh
+        this.switchModule('sql');
+    }
+
+    setupEventListeners() {
+        const editor = document.getElementById('editor');
+        editor.addEventListener('input', () => {
+            this.hasUnsavedChanges = true;
+            this.updateCurrentCode(editor.value);
+            
+            // Auto-preview for frontend module
+            if (this.currentModule === 'frontend') {
+                clearTimeout(this.previewTimeout);
+                this.previewTimeout = setTimeout(() => {
+                    this.runFrontend();
+                }, 500); // Debounce 500ms
+            }
+        });
+
+        document.getElementById('mod-selector').addEventListener('change', (e) => {
+            this.confirmModuleSwitch(e.target.value);
+        });
+
+        document.getElementById('lang-selector').addEventListener('change', () => {
+            this.updateLanguage();
+        });
+
+        document.querySelectorAll('.etab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                this.switchFile(e.target.dataset.file);
+            });
+        });
+
+        document.getElementById('tab-out-btn').addEventListener('click', () => this.switchView('out'));
+        document.getElementById('tab-res-btn').addEventListener('click', () => this.switchView('res'));
+
+        document.getElementById('btn-run').addEventListener('click', () => this.handleRun());
+        document.getElementById('btn-submit').addEventListener('click', () => this.handleSubmitTest()); // Renamed to discriminate from final submit
+        document.getElementById('btn-save').addEventListener('click', () => this.saveAndNext());
+    }
+
+    startTimer() {
+        const timerEl = document.getElementById('timer');
+        
+        this.timerInterval = setInterval(() => {
+            this.timeRemaining--;
+            
+            const minutes = Math.floor(this.timeRemaining / 60);
+            const seconds = this.timeRemaining % 60;
+            timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            timerEl.className = '';
+            if (this.timeRemaining <= 300) {
+                timerEl.className = 'danger';
+            } else if (this.timeRemaining <= 600) {
+                timerEl.className = 'warning';
+            }
+            
+            if (this.timeRemaining <= 0) {
+                clearInterval(this.timerInterval);
+                this.showToast('Time expired! Auto-submitting...', 'warning');
+                setTimeout(() => this.handleFinalSubmit(true), 2000);
+            }
+        }, 1000);
+    }
+
+    startAutoSave() {
+        this.autoSaveInterval = setInterval(() => {
+            if (this.hasUnsavedChanges && !this.isSubmitted) {
+                this.saveToLocalStorage();
+                this.hasUnsavedChanges = false;
+                this.updateStatus('Auto-saved');
+            }
+        }, 10000);
+    }
+
+    updateStatus(message) {
+        const status = document.getElementById('status');
+        const originalText = status.textContent;
+        status.textContent = `Status: ${message}`;
+        setTimeout(() => {
+            status.textContent = originalText;
+        }, 2000);
+    }
+
+    saveToLocalStorage() {
+        try {
+            const saveData = {
+                sessionId: this.sessionId,
+                sessionData: this.sessionData,
+                currentModule: this.currentModule,
+                currentFile: this.currentFile,
+                timeRemaining: this.timeRemaining,
+                sectionsSaved: Array.from(this.sectionsSaved),
+                selectedQuestions: this.selectedQuestions,
+                scores: this.scores,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('spark_session_v3', JSON.stringify(saveData));
+        } catch (e) {
+            console.error('Failed to save to localStorage:', e);
+        }
+    }
+
+    loadFromLocalStorage() {
+        try {
+            const saved = localStorage.getItem('spark_session_v3');
+            if (saved) {
+                const data = JSON.parse(saved);
+                
+                if (Date.now() - data.timestamp < 7200000) { // 2 hours
+                    this.sessionId = data.sessionId;
+                    this.sessionData = data.sessionData;
+                    
+                    // Migration: Update old default SQL comment to new one if user hasn't changed it
+                    // Also check for empty string or whitespace only
+                    const currentSql = (this.sessionData.sql || "").trim();
+                    if (!currentSql || currentSql.includes("below this line") || currentSql.includes("-- write your sql query below")) {
+                        this.sessionData.sql = "--write your sql query below\n\n";
+                    }
+
+                    // Sanitize backend: if it contains SQL comments (a known bug), clear it
+                    const currentBackend = (this.sessionData.backend || "").trim();
+                    if (currentBackend.includes("--write your sql query below")) {
+                        this.sessionData.backend = ""; // Will be reset in switchModule
+                    }
+
+                    this.currentModule = data.currentModule;
+                    this.currentFile = data.currentFile;
+                    this.timeRemaining = data.timeRemaining;
+                    this.sectionsSaved = new Set(data.sectionsSaved);
+                    this.selectedQuestions = data.selectedQuestions || this.selectedQuestions;
+                    this.scores = data.scores || { sql: 0, backend: 0, frontend: 0 };
+                    
+                    this.showToast('Previous session restored', 'success');
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load from localStorage:', e);
+        }
+    }
+
+    updateCurrentCode(value) {
+        if (this.currentModule === 'frontend') {
+            this.sessionData.frontend[this.currentFile] = value;
+        } else {
+            this.sessionData[this.currentModule] = value;
+        }
+    }
+
+    confirmModuleSwitch(newModule) {
+        if (this.hasUnsavedChanges) {
+            this.showModal(
+                'Unsaved Changes',
+                'You have unsaved changes. Continue switching modules?',
+                () => {
+                    this.switchModule(newModule);
+                },
+                () => {
+                    document.getElementById('mod-selector').value = this.currentModule;
+                }
+            );
+        } else {
+            this.switchModule(newModule);
+        }
+    }
+
+    switchModule(module) {
+        const editor = document.getElementById('editor');
+        
+        // Only save current code if a module was already active
+        if (this.currentModule) {
+            this.updateCurrentCode(editor.value);
+        }
+        
+        this.currentModule = module;
+        document.getElementById('mod-selector').value = module;
+        
+        const qIndex = this.selectedQuestions[module];
+        const q = this.questionBank[module][qIndex];
+        document.getElementById('question-panel').innerHTML = `<h2>${q.title}</h2>${q.content}`;
+
+        const ctrlBar = document.getElementById('editor-ctrl-bar');
+        const langSel = document.getElementById('lang-selector');
+        const feTabs = document.getElementById('frontend-tabs');
+        const resTabBtn = document.getElementById('tab-res-btn');
+        
+        // Buttons
+        const runBtn = document.getElementById('btn-run');
+        const submitBtn = document.getElementById('btn-submit');
+
+        ctrlBar.classList.add('hidden');
+        langSel.classList.add('hidden');
+        feTabs.classList.add('hidden');
+        resTabBtn.classList.add('hidden');
+        
+        // Reset buttons visibility
+        runBtn.style.display = 'inline-block';
+        submitBtn.style.display = 'inline-block';
+
+        if (module === 'backend') {
+            ctrlBar.classList.remove('hidden');
+            langSel.classList.remove('hidden');
+            
+            // Fix: ensure starter code is valid. If empty or SQL comment, reset to template
+            const currentCode = (this.sessionData.backend || "").trim();
+            if (!currentCode || currentCode.includes("--write your sql query below")) {
+                this.updateLanguage(); 
+            }
+            
+            editor.value = this.sessionData.backend;
+            this.showOutput('<p style="color:#6c757d; padding:15px;">Click "Run Code" to test sample case.</p>');
+        } else if (module === 'frontend') {
+            ctrlBar.classList.remove('hidden');
+            feTabs.classList.remove('hidden');
+            editor.value = this.sessionData.frontend[this.currentFile];
+            
+            // Re-enabled Run Test Cases for Frontend scoring
+            runBtn.style.display = 'none'; // Keep Run hidden as preview is live
+            submitBtn.style.display = 'inline-block';
+            
+            this.runFrontend();
+        } else {
+            resTabBtn.classList.remove('hidden');
+            editor.value = this.sessionData.sql;
+            this.loadDatabaseResources();
+            this.showOutput('<p style="color:#6c757d; padding:15px;">Write your SQL query and click "Run Code" to execute.</p>');
+        }
+        
+        this.updateSaveButtonState();
+        this.switchView('out');
+        this.hasUnsavedChanges = false;
+    }
+    
+    updateSaveButtonState() {
+        const saveBtn = document.getElementById('btn-save');
+        saveBtn.className = 'btn-action btn-save';
+        saveBtn.onclick = () => this.saveAndNext();
+        
+        // Logic: specific 3rd module button change happens in saveAndNext or checking status
+        if (this.sectionsSaved.size >= 2 && !this.sectionsSaved.has(this.currentModule)) {
+             saveBtn.textContent = 'Final Submit';
+             saveBtn.className = 'btn-action btn-final';
+             saveBtn.onclick = () => this.handleFinalSubmit();
+        } else {
+            saveBtn.textContent = 'Save & Next';
+        }
+    }
+
+    loadDatabaseResources() {
+        const qIndex = this.selectedQuestions.sql;
+        const q = this.questionBank.sql[qIndex];
+        const resContent = document.getElementById('res-content');
+        resContent.innerHTML = '';
+
+        // Extract tables from query instructions or reference query
+        const allTables = ['Staff', 'Users', 'Teams', 'Inventory', 'Sales'];
+        const tablesToShow = allTables.filter(t => 
+            q.content.includes(`<b>${t}</b>`) || q.refQuery.toLowerCase().includes(t.toLowerCase())
+        );
+
+        tablesToShow.forEach(tableName => {
+            if (this.database[tableName]) {
+                const title = document.createElement('h4');
+                title.style.margin = "15px 0 5px 0";
+                title.textContent = `Table: ${tableName}`;
+                resContent.appendChild(title);
+                
+                const tableContainer = document.createElement('div');
+                tableContainer.innerHTML = this.generateTableHTML(this.database[tableName]);
+                resContent.appendChild(tableContainer);
+            }
+        });
+    }
+
+    generateTableHTML(data) {
+        if (!data || data.length === 0) return "<p>No rows found.</p>";
+        
+        const keys = Object.keys(data[0]);
+        let html = "<table class='resource-table'><thead><tr>";
+        
+        keys.forEach(key => {
+            html += `<th>${this.escapeHtml(key)}</th>`;
+        });
+        
+        html += "</tr></thead><tbody>";
+        
+        data.forEach(row => {
+            html += "<tr>";
+            keys.forEach(key => {
+                html += `<td>${this.escapeHtml(String(row[key]))}</td>`;
+            });
+            html += "</tr>";
+        });
+        
+        return html + "</tbody></table>";
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    switchFile(file) {
+        const editor = document.getElementById('editor');
+        this.updateCurrentCode(editor.value);
+        
+        this.currentFile = file;
+        editor.value = this.sessionData.frontend[file];
+        
+        document.querySelectorAll('.etab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.file === file);
+        });
+        
+        // Trigger live preview update
+        this.runFrontend();
+    }
+
+    switchView(view) {
+        document.getElementById('view-out').classList.toggle('hidden', view !== 'out');
+        document.getElementById('view-res').classList.toggle('hidden', view !== 'res');
+        document.getElementById('tab-out-btn').classList.toggle('active', view === 'out');
+        document.getElementById('tab-res-btn').classList.toggle('active', view === 'res');
+    }
+
+    // ===================================
+    // RUN HANDLERS (Sample checks)
+    // ===================================
+    async handleRun() {
+        const runBtn = document.getElementById('btn-run');
+        runBtn.disabled = true;
+        runBtn.textContent = 'Running...';
+        
+        // Auto-switch to output view so user sees results immediately
+        this.switchView('out');
+
+        try {
+            if (this.currentModule === 'sql') {
+                this.runSQL();
+            } else if (this.currentModule === 'backend') {
+                this.runBackendSample();
+            } else if (this.currentModule === 'frontend') {
+                this.runFrontend();
+            }
+        } catch (error) {
+            this.showOutput(`<p class="output-error">Error: ${this.escapeHtml(error.message)}</p>`);
+        } finally {
+            runBtn.disabled = false;
+            runBtn.textContent = 'Run Code';
+        }
+    }
+
+    runSQL() {
+        const code = this.sessionData.sql.trim();
+        const starter = "--write your sql query below";
+        const validation = this.validateSQL(code);
+        
+        if (!code || code.toLowerCase() === starter) {
+            this.showOutput(`<p style="color:#57606a;">> Please write your SQL query below to see results.</p>`); 
+            return;
+        }
+
+        if (!validation.valid) {
+            this.showOutput(`<p class="output-error">> Error: ${this.escapeHtml(validation.error)}</p>`);
+            return;
+        }
+
+        try {
+            const result = this.executeSQL(code);
+            const output = `<p class="output-success">> Query executed successfully (${result.length} rows)</p>` +
+                          this.generateTableHTML(result);
+            this.showOutput(output);
+        } catch (error) {
+            this.showOutput(`<p class="output-error">> Error: ${this.escapeHtml(error.message)}</p>`);
+        }
+    }
+    
+    runBackendSample() {
+        const code = this.sessionData.backend;
+        const qIndex = this.selectedQuestions.backend;
+        const q = this.questionBank.backend[qIndex];
+        
+         // Improved logic detection: look for return statements followed by content (including brackets)
+         // and ensure 'pass' isn't the only logic (ignoring comments)
+         const codeWithoutComments = code.replace(/#.*$/gm, '').trim();
+         const hasReturn = /return\s+/.test(codeWithoutComments);
+         const hasOnlyPass = /^\s*pass\s*$/m.test(codeWithoutComments);
+         
+         if (!codeWithoutComments || hasOnlyPass) {
+             this.showOutput(`<p style="color:#57606a;">> No code detected. Please implement your solution to run the sample test.</p>`);
+             return;
+         }
+
+         const hasLogic = hasReturn && !hasOnlyPass;
+         
+         let output = `<p class="output-success">> Code Execution Started</p>`;
+         output += '<div style="margin:20px 0; padding:15px; background:#f8f9fa; border-radius:4px;">';
+         
+        if (hasLogic) {
+        output += `
+            <div style="margin:20px 0; padding:15px; background:#f8f9fa; border-radius:4px;">
+                <p style="color:#28a745; margin:0;"><b>✓ Sample Test Case Passed</b></p>
+                <small style="color:#555">Code simulation successful for: ${q.title}</small>
+            </div>`;
+    } else {
+        output += `
+            <div style="margin:20px 0; padding:15px; background:#f8f9fa; border-radius:4px;">
+                <p style="color:#dc3545; margin:0;"><b>✗ Sample Test Case Failed</b></p>
+                <small style="color:#555">No logic detected or only 'pass' found. Please implement the solution.</small>
+            </div>`;
+    }
+    output += '</div>';
+    this.showOutput(output);
+    }
+    
+    // ===================================
+    // SUBMIT TEST HANDLERS (Validation)
+    // ===================================
+    async handleSubmitTest() {
+         const btn = document.getElementById('btn-submit');
+         btn.disabled = true;
+         btn.textContent = 'Checking...';
+         
+         // Auto-switch to output view
+         this.switchView('out');
+         
+         try {
+             if (this.currentModule === 'sql') {
+                 this.checkSQLCases();
+             } else if (this.currentModule === 'backend') {
+                 this.checkBackendCases();
+             } else if (this.currentModule === 'frontend') {
+                 this.checkFrontendCases();
+             }
+         } finally {
+             btn.disabled = false;
+             btn.textContent = 'Run Test Cases';
+         }
+    }
+    
+    checkSQLCases() {
+        const code = this.sessionData.sql.trim();
+        const qIndex = this.selectedQuestions.sql;
+        const q = this.questionBank.sql[qIndex];
+        
+        let userResult;
+        try {
+            userResult = this.executeSQL(code);
+        } catch(e) {
+            this.showOutput(`<p class="output-error">Execution Error: ${e.message}</p>`);
+            return;
+        }
+        
+        const refResult = this.executeSQL(q.refQuery);
+        const passed = JSON.stringify(userResult) === JSON.stringify(refResult);
+        
+        // Update Internal Score: 1 Mark for SQL
+        this.scores.sql = passed ? 1 : 0;
+        this.saveToLocalStorage();
+
+        if (passed) {
+            this.showOutput('<div style="padding:15px; background:#e6fffa; color:#00695c; border:1px solid #b2dfdb; border-radius:4px;"><b>✓ Test cases passed (Score: 1/1 Mark)</b></div>');
+        } else {
+             this.showOutput('<div style="padding:15px; background:#fff5f5; color:#c53030; border:1px solid #fed7d7; border-radius:4px;"><b>✗ Test cases failed (Score: 0/1 Mark)</b></div>');
+        }
+    }
+    
+    checkBackendCases() {
+        const code = this.sessionData.backend;
+        const qIndex = this.selectedQuestions.backend;
+        const q = this.questionBank.backend[qIndex];
+        
+        const codeClean = code.toLowerCase().replace(/#.*$/gm, '').trim();
+        const hasReturn = /return\s+/.test(codeClean);
+        const hasLogic = /for|while|if|else|map|filter|max|sum|reducer/.test(codeClean);
+        
+        const patterns = {
+            "Target Sum": ["return", "[", "]", "for"],
+            "Max Finder": ["return", "max", ">", "for"],
+            "List Total": ["return", "sum", "+", "for", "reducer"],
+            "Even Count": ["return", "%", "2", "==", "0", "for"]
+        };
+
+        const required = patterns[q.title] || ["return"];
+        const matched = required.filter(p => codeClean.includes(p)).length;
+        const ratio = matched / required.length;
+
+        let passedCount = 0;
+        if (hasReturn && hasLogic) {
+            if (ratio >= 0.8) passedCount = 3;
+            else if (ratio >= 0.4) passedCount = 2;
+            else passedCount = 1;
+        }
+
+        const finalScore = passedCount === 3 ? 1 : 0;
+        this.scores.backend = finalScore;
+        this.saveToLocalStorage();
+
+        let output = `<div style="padding:15px; background:white; border:1px solid #d0d7de; border-radius:6px; margin-top:10px;">`;
+        output += `<h4 style="margin:0 0 15px 0; color:#24292f;">Test Case Results: ${q.title}</h4>`;
+        
+        q.testCases.forEach((tc, idx) => {
+            const isPassed = (idx < passedCount);
+            const icon = isPassed ? '✓' : '✗';
+            const color = isPassed ? '#28a745' : '#dc3545';
+            const bgColor = isPassed ? '#f0fff4' : '#fff5f5';
+            
+            output += `
+                <div style="margin-bottom:10px; padding:10px; background:${bgColor}; border:1px solid ${color}33; border-radius:4px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span style="font-weight:600; color:${color}">${icon} Test Case ${idx + 1}</span>
+                        <span style="font-size:11px; padding:2px 6px; background:${color}; color:white; border-radius:10px;">${isPassed ? 'Passed' : 'Failed'}</span>
+                    </div>
+                    <div style="font-size:12px; color:#57606a;">
+                        <b>Input:</b> <code>${tc.input}</code><br>
+                        <b>Expected:</b> <code>${tc.expected}</code>
+                    </div>
+                </div>`;
+        });
+
+        output += `
+            <div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:bold;">Final Score:</span>
+                <span style="font-size:18px; font-weight:800; color:${finalScore === 1 ? '#28a745' : '#d73a49'}">${finalScore}/1 Mark</span>
+            </div>
+            <div style="font-size:10px; color:#999; text-align:right;">(Requires 3/3 passed for 1 mark)</div>
+        </div>`;
+        
+        this.showOutput(output);
+    }
+
+    checkFrontendCases() {
+        const qIndex = this.selectedQuestions.frontend;
+        const q = this.questionBank.frontend[qIndex];
+        const html = (this.sessionData.frontend.html || "").toLowerCase();
+        const css = (this.sessionData.frontend.css || "").toLowerCase();
+        const js = (this.sessionData.frontend.js || "").toLowerCase();
+        const fullCode = html + css + js;
+
+        let marks = 0;
+        let details = [];
+
+        // Mark 1: Keywords
+        const missingKeywords = q.requiredKeywords.filter(k => !fullCode.includes(k.toLowerCase()));
+        if (missingKeywords.length === 0) {
+            marks += 1;
+            details.push('<span style="color:#28a745">✓ Mark 1: All required keywords found.</span>');
+        } else {
+            details.push(`<span style="color:#d73a49">✗ Mark 1: Missing keywords (${missingKeywords.join(", ")}).</span>`);
+        }
+
+        // Mark 2: Functional Elements
+        const missingElements = q.requiredElements.filter(e => !html.includes(`<${e}`));
+        if (missingElements.length === 0 && (js.includes("style") || css.includes(q.title.toLowerCase().includes("toggle") ? "background" : ""))) {
+            marks += 1;
+            details.push('<span style="color:#28a745">✓ Mark 2: Core functionality and elements detected.</span>');
+        } else {
+            details.push('<span style="color:#d73a49">✗ Mark 2: Missing required HTML elements or styling logic.</span>');
+        }
+
+        this.scores.frontend = marks;
+        this.saveToLocalStorage();
+
+        let output = `<div style="padding:15px; background:white; border:1px solid #d0d7de; border-radius:6px; margin-top:10px;">`;
+        output += `<h4 style="margin:0 0 15px 0;">Frontend Validation: ${q.title}</h4>`;
+        output += `<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;">${details.join("")}</div>`;
+        output += `<div style="padding-top:10px; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:bold;">Total Score:</span>
+            <span style="font-size:18px; font-weight:800; color:${marks === 2 ? '#28a745' : '#d73a49'}">${marks}/2 Marks</span>
+        </div></div>`;
+
+        this.showOutput(output);
+    }
+
+    validateSQL(query) {
+        const normalized = query.toLowerCase();
+        
+        const forbidden = ['delete', 'drop', 'truncate', 'alter', 'create', 'insert', 'update'];
+        for (const keyword of forbidden) {
+            const regex = new RegExp('\\b' + keyword + '\\b', 'i');
+            if (regex.test(normalized)) {
+                return { valid: false, error: `Operation not allowed: ${keyword.toUpperCase()}` };
+            }
+        }
+        
+        if (!normalized.includes('select')) {
+            return { valid: false, error: 'Only SELECT queries are allowed' };
+        }
+        
+        return { valid: true };
+    }
+
+    executeSQL(query) {
+        const normalized = query.toLowerCase().replace(/\s+/g, ' ').trim();
+        
+        // 1. Identify Tables and Joins
+        const fromMatch = normalized.match(/from\s+(\w+)(?:\s+join\s+(\w+)\s+on\s+([\w.]+)\s*=\s*([\w.]+))?/i);
+        if (!fromMatch) throw new Error("Invalid query: Missing FROM clause");
+        
+        const mainTable = fromMatch[1];
+        const joinTable = fromMatch[2];
+        const joinOn1 = fromMatch[3];
+        const joinOn2 = fromMatch[4];
+        
+        let data = this.database[Object.keys(this.database).find(k => k.toLowerCase() === mainTable.toLowerCase())];
+        if (!data) throw new Error(`Table not found: ${mainTable}`);
+        data = data.map(row => ({...row})); // Deep copy
+
+        // 2. Handle JOIN
+        if (joinTable) {
+            const joinSource = this.database[Object.keys(this.database).find(k => k.toLowerCase() === joinTable.toLowerCase())];
+            if (!joinSource) throw new Error(`Join table not found: ${joinTable}`);
+            
+            const [t1, c1] = joinOn1.split('.');
+            const [t2, c2] = joinOn2.split('.');
+            
+            const joinedData = [];
+            data.forEach(row1 => {
+                joinSource.forEach(row2 => {
+                    const val1 = t1.toLowerCase() === mainTable.toLowerCase() ? row1[c1] : row2[c1];
+                    const val2 = t2.toLowerCase() === joinTable.toLowerCase() ? row2[c2] : row1[c2];
+                    
+                    if (val1 !== undefined && val2 !== undefined && val1 === val2) {
+                        joinedData.push({...row1, ...row2});
+                    }
+                });
+            });
+            data = joinedData;
+        }
+
+        // 3. WHERE clause
+        const whereMatch = normalized.match(/where\s+(.*?)(?:\s+order|\s+limit|\s*$)/i);
+        if (whereMatch) {
+            const condition = whereMatch[1].trim();
+            data = data.filter(row => this.evaluateCondition(row, condition));
+        }
+        
+        // 4. ORDER BY
+        const orderMatch = normalized.match(/order\s+by\s+(\w+)(?:\s+(asc|desc))?/i);
+        if (orderMatch) {
+            const column = orderMatch[1];
+            const direction = orderMatch[2] ? orderMatch[2].toLowerCase() : 'asc';
+            data.sort((a, b) => {
+                const valA = a[Object.keys(a).find(k => k.toLowerCase() === column.toLowerCase())];
+                const valB = b[Object.keys(b).find(k => k.toLowerCase() === column.toLowerCase())];
+                
+                if (typeof valA === 'number') {
+                    return direction === 'desc' ? valB - valA : valA - valB;
+                }
+                return direction === 'desc' ? String(valB).localeCompare(String(valA)) : String(valA).localeCompare(String(valB));
+            });
+        }
+        
+        // 5. LIMIT / OFFSET
+        const limitMatch = normalized.match(/limit\s+(\d+)(?:\s+offset\s+(\d+))?/i);
+        if (limitMatch) {
+            const limit = parseInt(limitMatch[1]);
+            const offset = limitMatch[2] ? parseInt(limitMatch[2]) : 0;
+            data = data.slice(offset, offset + limit);
+        }
+        
+        // 6. SELECT Columns
+        const selectAll = normalized.includes('select *');
+        if (!selectAll) {
+            const selectMatch = normalized.match(/select\s+(.*?)\s+from/);
+            if (selectMatch) {
+                const selectedColumns = selectMatch[1].split(',').map(c => c.trim().toLowerCase());
+                data = data.map(row => {
+                    const newRow = {};
+                    selectedColumns.forEach(sc => {
+                        const actualKey = Object.keys(row).find(k => k.toLowerCase() === sc);
+                        if (actualKey) newRow[actualKey] = row[actualKey];
+                    });
+                    return newRow;
+                });
+            }
+        }
+        
+        return data;
+    }
+
+    evaluateCondition(row, condition) {
+        const operators = ['>=', '<=', '!=', '=', '>', '<'];
+        
+        for (const op of operators) {
+            if (condition.includes(op)) {
+                const parts = condition.split(op).map(p => p.trim());
+                const column = parts[0];
+                let value = parts[1].replace(/['"]/g, '');
+                
+                if (!isNaN(value)) value = parseFloat(value);
+                
+                const rowValue = row[column];
+                
+                switch (op) {
+                    case '>=': return rowValue >= value;
+                    case '<=': return rowValue <= value;
+                    case '!=': return rowValue != value;
+                    case '=': return rowValue == value;
+                    case '>': return rowValue > value;
+                    case '<': return rowValue < value;
+                }
+            }
+        }
+        return true;
+    }
+
+    runFrontend() {
+        try {
+            const container = document.getElementById('view-out');
+            container.innerHTML = '';
+            
+            const html = this.sessionData.frontend.html || '';
+            const css = this.sessionData.frontend.css || '';
+            const js = this.sessionData.frontend.js || '';
+            
+            const content = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { margin: 0; padding: 0; }
+                        ${css}
+                    </style>
+                </head>
+                <body>
+                    ${html}
+                    <script>
+                        (function() {
+                            try {
+                                ${js}
+                            } catch(e) {
+                                console.error('JavaScript Error:', e);
+                                var errorDiv = document.createElement('div');
+                                errorDiv.style.cssText = 'color:red;padding:10px;border:1px solid red;margin:10px;border-radius:4px;background:#fff5f5;';
+                                errorDiv.innerHTML = '<strong>JavaScript Error:</strong> ' + e.message;
+                                document.body.appendChild(errorDiv);
+                            }
+                        })();
+                    <\/script>
+                </body>
+                </html>
+            `;
+            
+            const iframe = document.createElement('iframe');
+            iframe.className = 'sandbox-frame';
+            iframe.sandbox = 'allow-scripts allow-same-origin';
+            iframe.srcdoc = content;
+            
+            container.appendChild(iframe);
+            
+        } catch (error) {
+            console.error('Frontend preview error:', error);
+            this.showOutput(`<p class="output-error">Preview Error: ${this.escapeHtml(error.message)}</p>`);
+        }
+    }
+
+    showOutput(html) {
+        document.getElementById('view-out').innerHTML = html;
+    }
+
+    updateLanguage() {
+        const language = document.getElementById('lang-selector').value;
+        const templates = {
+            python: "def solve(nums, target):\n    # TODO: Implement two sum\n    # Return list of two indices\n    pass",
+            java: "public class Solution {\n    public int[] solve(int[] nums, int target) {\n        // TODO: Implement two sum\n        return new int[0];\n    }\n}",
+            csharp: "public class Solution {\n    public int[] Solve(int[] nums, int target) {\n        // TODO: Implement two sum\n        return new int[0];\n    }\n}"
+        };
+        
+        // Switch language instantly
+        this.sessionData.backend = templates[language];
+        document.getElementById('editor').value = templates[language];
+        this.hasUnsavedChanges = true;
+    }
+
+    saveAndNext() {
+        this.sectionsSaved.add(this.currentModule);
+        this.saveToLocalStorage();
+        this.updateStatus('Saved');
+        this.showToast('Progress saved!', 'success');
+
+        // Force strict sequential navigation
+        let nextModule = null;
+        if (this.currentModule === 'sql') nextModule = 'backend';
+        else if (this.currentModule === 'backend') nextModule = 'frontend';
+        
+        // Update button state
+        this.updateSaveButtonState();
+        
+        if (nextModule) {
+            setTimeout(() => {
+                this.switchModule(nextModule);
+            }, 500);
+        }
+    }
+
+    handleFinalSubmit(autoSubmit = false) {
+        const message = autoSubmit 
+            ? 'Time has expired. Your assessment will be submitted automatically.'
+            : 'Are you sure you want to submit? You cannot make changes after submission.';
+        
+        const doSubmit = () => {
+    this.isSubmitted = true;
+    clearInterval(this.timerInterval);
+    clearInterval(this.autoSaveInterval);
+    
+    // Calculate total score from the three modules
+    const totalCodingScore = this.scores.sql + this.scores.backend + this.scores.frontend;
+    
+    // Save the specific key that result3.html expects
+    localStorage.setItem("coding_score", totalCodingScore);
+    
+    const submissionId = 'SUB_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    
+    const submission = {
+        submissionId,
+        sessionId: this.sessionId,
+        sessionData: this.sessionData,
+        totalScore: totalCodingScore, // Optional: add to the object too
+        timeRemaining: this.timeRemaining,
+        timestamp: new Date().toISOString(),
+        autoSubmit
+    };
+    
+    localStorage.setItem('spark_submission_' + submissionId, JSON.stringify(submission));
+    // localStorage.removeItem('spark_session'); // Keep this if you want to clear session
+
+    this.showToast('Assessment submitted successfully!', 'success');
+    
+    // UI Updates
+    document.getElementById('editor').disabled = true;
+    document.getElementById('btn-run').disabled = true;
+    document.getElementById('btn-save').disabled = true;
+    document.getElementById('btn-submit').disabled = true;
+    
+    setTimeout(() => {
+        // Optional: Redirect to results page
+        window.location.href = "timer4.html"; 
+    }, 1000);
+};
+        if (autoSubmit) {
+            doSubmit();
+        } else {
+            this.showModal('Final Submission', message, doSubmit);
+        }
+    }
+
+    showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = type;
+        toast.style.display = 'block';
+        
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    }
+
+    showModal(title, message, onConfirm, onCancel = null) {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+        const messageEl = document.getElementById('modal-message');
+        const confirmBtn = document.getElementById('modal-confirm');
+        const cancelBtn = document.getElementById('modal-cancel');
+        
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        overlay.classList.add('show');
+        
+        const handleConfirm = () => {
+            overlay.classList.remove('show');
+            if (onConfirm) onConfirm();
+            cleanup();
+        };
+        
+        const handleCancel = () => {
+            overlay.classList.remove('show');
+            if (onCancel) onCancel();
+            cleanup();
+        };
+        
+        const cleanup = () => {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+        
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+    }
+}
+
+// Initialize app when page loads
+let app;
+window.addEventListener('DOMContentLoaded', () => {
+    app = new SparkApp();
+});
+</script>
+
+</body>
+</html>

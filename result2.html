@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Summary</title>
+    <style>
+        :root { --company-green: #008751; --company-blue: #4a90e2; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #fff; color: #333; padding-bottom: 60px; user-select: none;}
+        nav { background: black; height: 60px; display: flex; align-items: center; padding: 0 30px; }
+        .logo { font-weight: bold; font-size: 30px; letter-spacing: 2px; color: white; }
+        .logo span { color: #007bff; }
+        .container { max-width: 850px; margin: auto; padding: 50px 20px; }
+        .score-badge { display: inline-block; border: 2px solid var(--company-green); padding: 10px 40px; border-radius: 4px; font-size: 22px; font-weight: bold; margin-bottom: 30px; }
+        .card { background: #f9f9f9; padding: 30px; border-radius: 8px; border-left: 6px solid var(--company-blue); text-align: left; }
+        footer { position: fixed; bottom: 0; width: 100%; height: 40px; background: black; color: white; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; box-sizing: border-box; }
+        .heart { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <nav><div class="logo">SPARK<span>.</span></div></nav>
+
+    <div class="container" style="text-align: center;">
+        <h2>Assessment Summary</h2>
+        <div style="display: flex; flex-direction: column;">
+            <div class="score-badge"  style="color:darkgreen">Behavioural Assessment Score : <span id="behScore">0</span>/162</div>
+            <div class="score-badge">Bubble Game Score : <span id="bubScore">0</span>/28</div>
+            <div class="score-badge">Path Finder Game Score : <span id="pathscore">0</span></div>
+            <div class="score-badge">Door-Maze Game Score : <span id="mazeScoreDisplay">0</span></div>
+            <div class="score-badge" style="color: darkblue; border-color: darkblue;">
+            Cognitive Round Score : <span id="cogScore">0</span>
+            </div>
+            <div class="score-badge">Technical Round Score : <span id="techScore">0</span></div>
+        </div>
+        
+        
+        <div class="card">
+            <h3 id="resTitle" style="color:var(--company-blue);"></h3>
+            <p id="resDesc"></p>
+            <h4>Key Strengths:</h4>
+            <ul id="resStrengths"></ul>
+        </div>
+    </div>
+    <div style="margin-top: 30px; text-align: center;">
+    <button id="finalExitBtn" onclick="closeSEB()" style="background: #333; color: white; padding: 15px 40px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 18px;">
+        Exit & Close Browser
+    </button>
+</div>
+
+    <footer>with <span class="heart">&#x2764;</span> SASIDHAR</footer>
+
+    <script>
+    const behScore = localStorage.getItem("beh_score") || 0;
+    const bubScore = parseInt(localStorage.getItem("bubble_test_score") || 0);
+    const pathScore = parseInt(localStorage.getItem("pathfinderScore") || 0);
+    const mazeScore = parseInt(localStorage.getItem("mazeScore") || 0);
+    const totalCognitiveScore = bubScore + pathScore + mazeScore;
+    document.getElementById('techScore').innerText = localStorage.getItem("tech_score") || 0;
+
+    document.getElementById('behScore').innerText = behScore;
+    document.getElementById('resTitle').innerText = localStorage.getItem("profile_title") || "No Title";
+    document.getElementById('resDesc').innerText = localStorage.getItem("profile_desc") || "";
+    document.getElementById('bubScore').innerText = bubScore;
+    document.getElementById('pathscore').innerText = pathScore;
+    document.getElementById('mazeScoreDisplay').innerText = mazeScore;
+
+    document.getElementById('cogScore').innerText = totalCognitiveScore;
+
+    const strengths = JSON.parse(localStorage.getItem("profile_strengths") || "[]");
+    const list = document.getElementById('resStrengths');
+    list.innerHTML = "";
+    strengths.forEach(s => {
+        let li = document.createElement('li');
+        li.innerText = s;
+        list.appendChild(li);
+    });
+
+    function closeSEB() {
+    // 1. Clear local storage for security after the user sees their score
+    localStorage.clear();
+
+    // 2. Attempt to close the window (Works for SEB and windows opened via script)
+    window.close();
+
+    // 3. Fallback: If window.close() is blocked, redirect to a blank page
+    setTimeout(() => {
+        window.location.href = "about:blank";
+    }, 500);
+}
+</script>
+</body>
+</html>

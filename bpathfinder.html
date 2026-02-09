@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Instruction System</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            background-color: #ffffff;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 60px;
+            background-color: black;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            transition: filter 0.3s ease;
+        }
+
+        .logo { 
+            font-weight: bold; 
+            font-size: 24px; 
+            letter-spacing: 2px; 
+            color: white; 
+        }
+        .logo span { color: #007bff; }
+
+        .nav-note {
+            color: white;
+            font-size: 20x;
+            text-align: center;
+            flex-grow: 1;
+            padding: 0 20px;
+        }
+
+        #startingPage {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding-top: 60px; 
+            padding-bottom: 50px; 
+            transition: filter 0.3s ease;
+        }
+
+        .instruction-box {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 30px;
+            max-width: 900px;
+            margin: 40px auto;
+            border-radius: 4px;
+        }
+
+        .highlight { font-weight: bold; }
+
+        .page-footer {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 40px;
+            background: black; display: flex; align-items: center; 
+            justify-content: end; 
+            padding-right: 20px; 
+            z-index: 2000; font-size: 24px; color: white;
+            box-sizing: border-box;
+        }
+        .heart { color: #e74c3c; margin: 0 5px; }
+
+        .blurred {
+            filter: blur(8px);
+            pointer-events: none;
+        }
+
+        .footer-action {
+            margin-top: auto;
+            height: 80px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 40px;
+        }
+
+        .next-btn, .start-test-btn {
+            background-color: #2c2e31;
+            color: white;
+            border: none;
+            padding: 10px 40px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(209, 209, 209, 0.6); 
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            z-index: 3000; 
+        }
+
+        .popup-card {
+            background: #e0e0e0;
+            width: 95%;
+            max-width: 950px;
+            min-height: 160px;
+            padding: 30px 60px;
+            border-radius: 4px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .popup-text { font-size: 19px; line-height: 1.5; color: #333; }
+        .popup-text p { margin-bottom: 15px; }
+        .btn-container { display: flex; justify-content: center; margin-top: 10px; }
+
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 36px;
+            color: #aaaaaa;
+            cursor: pointer;
+            padding: 15px;
+            user-select: none;
+            transition: color 0.2s ease;
+        }
+        .nav-arrow:hover { color: #333333; }
+        .arrow-left { left: 10px; }
+        .arrow-right { right: 10px; }
+
+        .dot-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .mini-dot {
+            width: 9px; height: 9px;
+            border: 1px solid #777;
+            border-radius: 50%;
+        }
+        .mini-dot.active { background: #333; border-color: #333; }
+    </style>
+</head>
+<body>
+
+    <nav id="mainNav">
+        <div class="logo">SPARK<span>.</span></div>
+        <div class="nav-note">
+            <strong>Please note: Your video and audio is being recorded. It will be reviewed to check for integrity.</strong>
+        </div>
+        <div style="width: 100px;"></div> </nav>
+
+    <div id="startingPage">
+        <div class="instruction-box">
+            <p>This practice exercise will provide you with instructions and practice items for a task designed to measure <span class="highlight">image rotation ability</span>.</p>
+            <br>
+            <p>Please take the time to read the instructions carefully and use the practice items to familiarize yourself with the task.</p>
+        </div>
+        <div class="footer-action">
+            <button class="next-btn" onclick="startPopups()">NEXT</button>
+        </div>
+    </div>
+
+    <footer class="page-footer" id="mainFooter">
+        with <span class="heart">&#x2764;</span> SASIDHAR
+    </footer>
+
+    <div class="overlay" id="popupOverlay">
+        <div class="popup-card">
+            <div class="nav-arrow arrow-left" id="prevBtn" onclick="moveStep(-1)">❮</div>
+            <div class="popup-text" id="popupContent"></div>
+            <div class="nav-arrow arrow-right" id="nextBtn" onclick="moveStep(1)">❯</div>
+            <div id="finalAction" class="btn-container"></div>
+            <div class="dot-container" id="dots"></div>
+        </div>
+    </div>
+
+    <script>
+        const popupData = [
+            { text: "<p>Your goal is to create a path from the icon on the left to the icon on the right by rotating the tiles and changing the arrow directions. You should try to generate a path in the least number of moves.</p>" },
+            { text: "<p>Tap/click on a tile to select it.</p>" },
+            { text: "<p>Tap/click <b>&#8635;</b> to rotate the tile clockwise.</p>" },
+            { text: "<p>Tap/click <b>&#8644;</b> to change the direction of route.</p>" },
+            { text: "<p>Please note that you can use the <b>&#8644;</b> button to change the direction of the arrows for all possible paths entering and exiting the tile.</p>" },
+            { text: "<p>Arrow directions can point left, right, up, down, and around any angles of the tile path.</p>" },
+            { text: "<p>Once the route is complete, select <b>&#10003;</b>. If you have successfully created a path, the task is complete. If you have not successfully created a path, you will be able to try again.</p>" },
+            { text: "<p>Your goal is to create a valid path in the least number of moves. You do not need to rush. However, if you have been unable to find a valid path within the time limit, you will progress automatically to the next question.</p><p>A timer is located at the bottom of the screen to indicate time remaining.</p>" },
+            { text: "<p>Press the <b>START TEST</b> button to proceed to the first grid.</p>" }
+        ];
+
+        let currentIdx = 0;
+
+        function startPopups() {
+            document.getElementById('mainNav').classList.add('blurred');
+            document.getElementById('mainFooter').classList.add('blurred');
+            document.getElementById('startingPage').classList.add('blurred');
+            
+            document.getElementById('popupOverlay').style.display = 'flex';
+            updateUI();
+        }
+
+        function updateUI() {
+            const content = document.getElementById('popupContent');
+            const finalAction = document.getElementById('finalAction');
+            const isLast = currentIdx === popupData.length - 1;
+
+            content.innerHTML = popupData[currentIdx].text;
+            
+            document.getElementById('prevBtn').style.visibility = currentIdx === 0 ? 'hidden' : 'visible';
+            document.getElementById('nextBtn').style.visibility = isLast ? 'hidden' : 'visible';
+
+            finalAction.innerHTML = isLast ? `<button class="start-test-btn" onclick="window.location.href='./pathfinder.html'">START TEST</button>` : '';
+
+            const dotsDiv = document.getElementById('dots');
+            dotsDiv.innerHTML = '';
+            for (let i = 0; i < popupData.length; i++) {
+                const dot = document.createElement('div');
+                dot.className = `mini-dot ${i === currentIdx ? 'active' : ''}`;
+                dotsDiv.appendChild(dot);
+            }
+        }
+
+        function moveStep(dir) {
+            currentIdx += dir;
+            updateUI();
+        }
+    </script>
+</body>
+</html>

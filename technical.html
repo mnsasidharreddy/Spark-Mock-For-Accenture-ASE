@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spark Technical Assessment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f3f4f6; user-select: none; overflow: hidden; height: 100vh; display: flex; flex-direction: column; user-select: none;}
+        .main-container { flex: 1; display: flex; overflow: hidden; }
+        .side-panel { overflow-y: auto; height: 100%; padding: 40px; }
+        .option-card { border: 2px solid #e5e7eb; border-radius: 8px; transition: all 0.2s; cursor: pointer; background: white; padding: 18px; display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
+        .option-card:hover { border-color: #3b82f6; background-color: #f8fafc; }
+        .option-card.selected { border-color: #3b82f6; background-color: #eff6ff; }
+        .custom-radio { width: 20px; height: 20px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; flex-shrink: 0; }
+        .custom-radio.checked { border-color: #3b82f6; background-color: #3b82f6; }
+        .custom-radio.checked::after { content: ''; width: 8px; height: 8px; background: white; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .pagination-track { display: flex; border: 1px solid #d1d5db; border-radius: 4px; overflow-x: auto; max-width: 600px; background: white; scrollbar-width: none; }
+        .active-tab { background-color: #eff6ff !important; border-bottom: 4px solid #3b82f6 !important; font-weight: bold; color: #1d4ed8; }
+        .answered-indicator { border-top: 4px solid #10b981; }
+        pre { background: #1e293b; padding: 20px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 14px; border: 1px solid #334155; line-height: 1.6; color: #f8fafc; margin-top: 15px; white-space: pre-wrap; }
+        .footer-nav { background: white; border-top: 1px solid #e5e7eb; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 50px;}
+        .btn-submit { background-color: #10b981 !important; color: white !important; border: none !important; }
+        span{color:blue}
+        .page-footer {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 40px;
+      background: black; display: flex; align-items: center; 
+      justify-content: end; 
+      padding-right: 20px; 
+      z-index: 2000; font-size: 20px; color: white;
+      box-sizing: border-box;
+    }
+    </style>
+</head>
+<body>
+
+    <nav class="bg-[#111] text-white px-6 py-3 flex justify-between items-center">
+        <div class="font-bold text-xl tracking-tighter uppercase italic">SPARK<span>.</span></div>
+        <div class="flex items-center gap-6">
+            <div id="statsLabel" class="text-sm font-bold text-green-400">Attempted: 0/45</div>
+            <div id="timer" class="bg-[#222] text-yellow-500 border border-yellow-900/30 px-4 py-1 rounded font-mono text-xl">45:00</div>
+        </div>
+    </nav>
+
+    <div class="bg-white border-b border-gray-200 px-4 py-1 flex items-center justify-between">
+        <select id="sectionFilter" onchange="applyFilter()" class="bg-gray-50 border border-gray-300 text-gray-700 text-xs font-bold rounded p-1 outline-none">
+            <option value="All">All Sections</option>
+            <option value="Pseudocode">Pseudocode</option>
+            <option value="Networking">Networking</option>
+            <option value="Office">MS Office</option>
+        </select>
+        <div class="pagination-track" id="paginationContainer"></div>
+        <div class="w-20"></div>
+    </div>
+
+    <div class="main-container bg-white">
+        <div class="w-1/2 side-panel border-r border-gray-100">
+            <h2 id="qNumHeading" class="text-2xl font-bold text-gray-800 mb-2"></h2>
+            <div id="sectionLabel" class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4"></div>
+            <div id="qTextDisplay" class="text-gray-700 text-[17px] leading-relaxed"></div>
+        </div>
+        <div class="w-1/2 side-panel bg-[#fafbfc]">
+            <div id="optionsContainer"></div>
+        </div>
+    </div>
+
+    <div class="footer-nav">
+        <button id="prevBtn" onclick="changeQuestion(-1)" class="px-12 py-3 border border-gray-300 rounded-md font-bold">Previous</button>
+        <button id="nextBtn" onclick="handleAction()" class="px-16 py-3 bg-blue-600 text-white rounded-md font-bold">Next</button>
+    </div>
+
+    <footer class="page-footer" id="mainFooter">
+        with <span class="heart" style="color: red;"> &#x2764; </span> SASIDHAR
+    </footer>
+
+    <script>
+        const s1 = [
+            { id: "P1", section: "Pseudocode", q: "What will be the final output of the following pseudocode?<pre>Integer a=4, b=5, c=2\nIf (a+b > 8)\n  a = a+1\n  If (a%2 == 0) c = c*2\nElse b = b-1\nPrint c</pre>", opts: ["4", "2", "8", "5"], ans: 0 },
+            { id: "P2", section: "Pseudocode", q: "What is the final value of 'res' in the code snippet below?<pre>Integer res=1, n=4\nFor i=1 to n\n  res = res * i\nPrint res</pre>", opts: ["12", "24", "10", "4"], ans: 1 },
+            { id: "P3", section: "Pseudocode", q: "What will the following pseudocode output?<pre>Integer x=15, y=20\nx = x ^ y; y = x ^ y; x = x ^ y\nPrint x</pre>", opts: ["35", "5", "20", "15"], ans: 2 },
+            { id: "P4", section: "Pseudocode", q: "What is the final value of 'sum'?<pre>Integer sum=0\nFor i=1 to 2\n  For j=1 to 2\n    sum = sum + (i+j)\nPrint sum</pre>", opts: ["8", "6", "10", "12"], ans: 3 },
+            { id: "P5", section: "Pseudocode", q: "What value of 'a' will be printed?<pre>Integer a=10, b=3\nIf (a > b AND a%b != 0) a = a + b\nElse a = a - b\nPrint a</pre>", opts: ["13", "7", "10", "3"], ans: 0 },
+            { id: "P6", section: "Pseudocode", q: "What will be the output of this bitwise operation?<pre>Integer p=7\np = p >> 1\nPrint p</pre>", opts: ["14", "3", "1", "7"], ans: 1 },
+            { id: "P7", section: "Pseudocode", q: "What is the final value of 'n' after the loop below?<pre>Integer n=10\nDo n = n - 3\nWhile (n > 4)\nPrint n</pre>", opts: ["1", "4", "7", "0"], ans: 2 },
+            { id: "P8", section: "Pseudocode", q: "Which character will be printed as the result?<pre>Integer v=10\nIf (v > 5)\n  If (v < 10) Print 'A'\n  Else Print 'B'\nElse Print 'C'</pre>", opts: ["C", "A", "B", "Error"], ans: 2 },
+            { id: "P9", section: "Pseudocode", q: "What is the final value of 'a' after these operations?<pre>Integer a=10, b=20\na=a+b; b=a-b; a=a-b\nPrint a</pre>", opts: ["20", "10", "30", "0"], ans: 0 },
+            { id: "P10", section: "Pseudocode", q: "What is the result of the bitwise AND operation below?<pre>Integer x=5, y=3\nPrint x & y</pre>", opts: ["1", "7", "5", "0"], ans: 0 },
+            { id: "P11", section: "Pseudocode", q: "What will be the final result printed?<pre>Integer a=12, b=4\nIf (a/b > 2) Print a+b\nElse Print a-b</pre>", opts: ["8", "16", "3", "48"], ans: 1 },
+            { id: "P12", section: "Pseudocode", q: "What is the final sum of 'k'?<pre>Integer k=0\nFor i=1 to 3\n  k = k + i*i\nPrint k</pre>", opts: ["6", "14", "9", "10"], ans: 1 },
+            { id: "P13", section: "Pseudocode", q: "What value is returned by the following logic?<pre>Integer x=5, y=2\nReturn x%y + x/y</pre>", opts: ["1", "2", "7", "3"], ans: 3 },
+            { id: "P14", section: "Pseudocode", q: "What will be the result of this bitwise shift?<pre>Integer a=2, b=3\nPrint (a << b)</pre>", opts: ["6", "12", "16", "8"], ans: 2 },
+            { id: "P15", section: "Pseudocode", q: "What is the result of the recursive call fun(3)?<pre>Func fun(n)\n If (n==0) Return 1\n Return n + fun(n-1)\nPrint fun(3)</pre>", opts: ["7", "6", "4", "3"], ans: 1 },
+            { id: "P16", section: "Pseudocode", q: "What will be the final value of 's' printed?<pre>Integer s=0, i=1\nWhile(i<=5)\n If(i%2!=0) s=s+i\n i=i+1\nPrint s</pre>", opts: ["9", "15", "6", "10"], ans: 0 },
+            { id: "P17", section: "Pseudocode", q: "What is the value of 'b' after the swap operations?<pre>Integer a=10, b=5\na=a+b; b=a-b\nPrint b</pre>", opts: ["10", "5", "15", "0"], ans: 0 },
+            { id: "P18", section: "Pseudocode", q: "Following standard precedence, what is printed?<pre>Integer p=2, q=3, r=4\nPrint p+q*r</pre>", opts: ["20", "14", "24", "11"], ans: 1 },
+            { id: "P19", section: "Pseudocode", q: "What will be the sum of array elements below?<pre>Integer arr[]={1,2,3}\nPrint arr[0]+arr[2]</pre>", opts: ["4", "3", "6", "5"], ans: 0 },
+            { id: "P20", section: "Pseudocode", q: "What will be the output of this bitwise right shift?<pre>Integer x=10\nx = x >> 2\nPrint x</pre>", opts: ["5", "2", "20", "40"], ans: 1 },
+            { id: "P21", section: "Pseudocode", q: "What is printed based on the logical OR operation?<pre>Integer a=1, b=0\nIf (a OR b) Print 'T'\nElse Print 'F'</pre>", opts: ["T", "F", "1", "0"], ans: 0 },
+            { id: "P22", section: "Pseudocode", q: "What is the final value of 'i'?<pre>Integer i=10\nIf(i>5) i=i+5\nIf(i>10) i=i+5\nPrint i</pre>", opts: ["15", "10", "25", "20"], ans: 3 },
+            { id: "P23", section: "Pseudocode", q: "What is the total count printed?<pre>Integer c=0\nFor i=1 to 2\n For j=1 to 2\n  c=c+1\nPrint c</pre>", opts: ["4", "2", "6", "8"], ans: 0 },
+            { id: "P24", section: "Pseudocode", q: "After the bitwise XOR swap, what is the value of 'b'?<pre>Integer a=5, b=10\na=a^b; b=a^b; a=a^b\nPrint b</pre>", opts: ["5", "10", "15", "0"], ans: 0 },
+            { id: "P25", section: "Pseudocode", q: "What is the result of the integer division?<pre>Integer x=15, y=4\nPrint x/y</pre>", opts: ["3.75", "4", "0", "3"], ans: 3 },
+            { id: "P26", section: "Pseudocode", q: "What is the value of a**b?<pre>Integer a=10, b=2\nPrint a**b</pre>", opts: ["100", "20", "12", "1024"], ans: 0 },
+            { id: "P27", section: "Pseudocode", q: "What will be printed based on the logical AND condition?<pre>Integer n=5\nIf (n<10 AND n>0) Print 'Y'</pre>", opts: ["Y", "N", "None", "Error"], ans: 0 },
+            { id: "P28", section: "Pseudocode", q: "What is the final value of 's' after the loop?<pre>Integer s=0\nFor i=1 to 5\n s=s+i\nPrint s</pre>", opts: ["10", "20", "15", "5"], ans: 2 },
+            { id: "P29", section: "Pseudocode", q: "What will be the output of the modulus operation?<pre>Integer a=5, b=2\nPrint a%b</pre>", opts: ["1", "2", "2.5", "0"], ans: 0 },
+            { id: "P30", section: "Pseudocode", q: "What is the result of the logical evaluation?<pre>Integer x=10, y=5\nPrint (x>y AND y<2)</pre>", opts: ["False", "True", "1", "0"], ans: 0 },
+            { id: "P31", section: "Pseudocode", q: "What will be the final value of 'a' printed?<pre>Integer a=10\na=a+5; a=a-2\nPrint a</pre>", opts: ["13", "15", "17", "10"], ans: 0 },
+            { id: "P32", section: "Pseudocode", q: "What will the following while loop output?<pre>Integer i=1\nWhile(i<3)\n Print i; i=i+1</pre>", opts: ["1 2", "1 2 3", "2 3", "1"], ans: 0 },
+            { id: "P33", section: "Pseudocode", q: "What will be printed if the nested condition is met?<pre>Integer a=1, b=2, c=3\nIf(a<b AND b<c) Print 'OK'</pre>", opts: ["OK", "NO", "Error", "None"], ans: 0 },
+            { id: "P34", section: "Pseudocode", q: "What is the result of the bitwise OR operation?<pre>Integer a=4, b=1\nPrint a|b</pre>", opts: ["5", "4", "1", "0"], ans: 0 },
+            { id: "P35", section: "Pseudocode", q: "What will be printed by this post-increment operation?<pre>Integer x=10\nPrint x++</pre>", opts: ["10", "11", "9", "Error"], ans: 0 },
+            { id: "P36", section: "Pseudocode", q: "What will be printed by this pre-increment operation?<pre>Integer a=5\nPrint ++a</pre>", opts: ["6", "5", "4", "Error"], ans: 0 },
+            { id: "P37", section: "Pseudocode", q: "What will be the output of the if-else condition?<pre>Integer x=5\nIf(x==5) Print 'A'\nElse Print 'B'</pre>", opts: ["A", "B", "5", "None"], ans: 0 },
+            { id: "P38", section: "Pseudocode", q: "Which value is printed based on the comparison?<pre>Integer a=10, b=20\nIf(a>b) Print a\nElse Print b</pre>", opts: ["20", "10", "30", "0"], ans: 0 },
+            { id: "P39", section: "Pseudocode", q: "What will the loop print during its iterations?<pre>Integer i=0\nFor i=1 to 2\n Print i</pre>", opts: ["1 2", "0 1 2", "1", "2"], ans: 0 },
+            { id: "P40", section: "Pseudocode", q: "What is the mathematical output of this expression?<pre>Integer x=5, y=10\nPrint x+y*2</pre>", opts: ["25", "30", "20", "15"], ans: 0 },
+            { id: "P41", section: "Pseudocode", q: "What is the returned result of compute(12, 7, 4)?<pre>Integer a=12, b=7, c=4, res=0\nFunction compute(x, y, z)\n  If (x > y AND x > z)\n    x = x % y\n    If (x == 0) Return y\n    Else Return x + z\n  Else\n    y = y + z\n    Return y - x\n  EndIf\nEndFunction\nres = compute(a, b, c)\nPrint res</pre>", opts: ["5", "9", "8", "Error"], ans: 1 },
+            { id: "P42", section: "Pseudocode", q: "What is the final value of 'counter' after the loops?<pre>Integer i, j, counter = 0\nFor i = 1 to 4\n  For j = i to 3\n    If (i + j > 4)\n      counter = counter + 2\n    Else\n      counter = counter + 1\n    EndIf\n  EndFor\n  If (counter > 5)\n    counter = counter - 1\n  EndIf\nEndFor\nPrint counter</pre>", opts: ["7", "6", "8", "9"], ans: 0 },
+            { id: "P43", section: "Pseudocode", q: "What does the call find(3, 2) return?<pre>Function find(m, n)\n  If (m == 0) Return n + 1\n  Else If (m > 0 AND n == 0)\n    Return find(m - 1, 1)\n  Else If (m > 0 AND n > 0)\n    Return find(m - 1, find(m, n - 1))\n  Else\n    Return Error\n  EndIf\nEndFunction\nPrint find(3, 2)</pre>", opts: ["13", "9", "29", "Error"], ans: 2 },
+            { id: "P44", section: "Pseudocode", q: "What is the final sum calculated from the array?<pre>Integer arr[] = {10, 20, 30, 40, 50}\nInteger i, sum = 0, p = 2\nFor i = 0 to 4\n  If (i % p == 0)\n    sum = sum + arr[i]\n  Else\n    sum = sum - arr[i]\n  EndIf\n  p = p + 1\n  If (p > 3) p = 2\nEndFor\nPrint sum</pre>", opts: ["30", "-10", "50", "Error"], ans: 1 },
+            { id: "P45", section: "Pseudocode", q: "What is the final value of 'z'?<pre>Integer x = 5, y = 10, z = 2\nx = x ^ y\ny = x ^ y\nx = x ^ y\nIf (x > y)\n  z = x / (y - 5)\nElse\n  z = y / (x - 10)\nEndIf\nPrint z</pre>", opts: ["2", "5", "0", "Error"], ans: 3 },
+            { id: "P46", section: "Pseudocode", q: "What is the final value of 'val' after the while loop?<pre>Integer a = 15, b = 25, val = 0\nWhile (a > 0)\n  If (a % 2 != 0)\n    val = val + b\n  EndIf\n  a = a / 2\n  b = b * 2\n  If (val > 150)\n    val = val - 50\n    Break\n  EndIf\nEndWhile\nPrint val</pre>", opts: ["125", "175", "100", "75"], ans: 0 },
+            { id: "P47", section: "Pseudocode", q: "What is the final value of 'p' calculated?<pre>Integer p = 8, q = 3, r = 1\nFor i = 1 to 3\n  r = r * 2\n  Switch(r)\n    Case 2: p = p - q\n    Case 4: p = p + 2\n    Case 8: p = p * 1\n    Default: p = 0\n  EndSwitch\nEndFor\nPrint p</pre>", opts: ["7", "10", "0", "Error"], ans: 0 },
+            { id: "P48", section: "Pseudocode", q: "After the sorting logic finishes, what is the value of str[2]?<pre>Integer str[] = {5, 1, 4, 2, 8}\nInteger n = 5, i, j, temp\nFor i = 0 to n-2\n  For j = 0 to n-i-2\n    If (str[j] > str[j+1])\n      temp = str[j]\n      str[j] = str[j+1]\n      str[j+1] = temp\n    EndIf\n  EndFor\nEndFor\nPrint str[2]</pre>", opts: ["2", "1", "4", "5"], ans: 2 },
+            { id: "P49", section: "Pseudocode", q: "Which size label will be printed based on the GCD result?<pre>Integer m = 40, n = 60\nFunction GCD(a, b)\n  While (a != b)\n    If (a > b) a = a - b\n    Else b = b - a\n  EndWhile\n  Return a\nEndFunction\nInteger res = GCD(m, n)\nIf (res < 10) Print 'Small'\nElse If (res >= 10 AND res <= 20) Print 'Medium'\nElse Print 'Large'</pre>", opts: ["Small", "Large", "Medium", "Error"], ans: 2 },
+            { id: "P50", section: "Pseudocode", q: "What value is printed when the loop exits?<pre>Integer x = 1, y = 1, z = 10, k = 0\nFor k = 1 to 5\n  x = x + y\n  y = x - y\n  If (x > z)\n    Print x\n    Exit Loop\n  EndIf\nEndFor\nIf (k > 5) Print y</pre>", opts: ["8", "13", "5", "Error"], ans: 1 },
+            { id: "P51", section: "Pseudocode", q: "What is the output of the following XOR/AND loop logic?<pre>Integer a=5, b=2, c=1\nFor i=1 to 3\n a = a ^ b\n b = b + c\n c = a & b\nEndFor\nPrint a</pre>", opts: ["7", "4", "5", "1"], ans: 1 },
+            { id: "P52", section: "Pseudocode", q: "What is the final value of 'val' after the loop terminates?<pre>Integer val=0, i=1\nWhile(i <= 10)\n If(i % 3 == 0) val = val + i\n Else val = val + 1\n i = i + 1\nEndWhile\nPrint val</pre>", opts: ["25", "18", "21", "22"], ans: 3 },
+            { id: "P53", section: "Pseudocode", q: "What is the result of find(4) given the recursive definition below?<pre>Function find(n)\n If(n <= 1) Return 1\n If(n % 2 == 0) Return n + find(n-1)\n Return n * find(n-2)\nEndFunction\nPrint find(4)</pre>", opts: ["10", "11", "7", "Error"], ans: 0 },
+            { id: "P54", section: "Pseudocode", q: "What character string will be printed after the swap check?<pre>Integer x=10, y=20\nx = x + y\ny = x - y\nx = x - y\nIf(x == 20 AND y == 10) Print 'Success'\nElse Print 'Fail'</pre>", opts: ["Success", "Fail", "10", "20"], ans: 0 },
+            { id: "P55", section: "Pseudocode", q: "What will be the final value of 'z' calculated?<pre>Integer x=5, y=0, z=10\nIf(x > 0 OR (z/y > 1))\n z = z + 5\nElse\n z = z - 5\nPrint z</pre>", opts: ["15", "5", "10", "Error"], ans: 0 },
+            { id: "P56", section: "Pseudocode", q: "What is the final value of 'c' in this Fibonacci-like loop?<pre>Integer a=1, b=1, c=0\nFor i=1 to 4\n c = a + b\n a = b\n b = c\nEndFor\nPrint c</pre>", opts: ["3", "5", "8", "13"], ans: 2 },
+            { id: "P57", section: "Pseudocode", q: "What is the final result of (p + q) after the shifts?<pre>Integer p=10, q=5\np = p >> 2\nq = q << 1\nPrint p + q</pre>", opts: ["12", "14", "16", "10"], ans: 0 },
+            { id: "P58", section: "Pseudocode", q: "How many successful increments occur in the nested loop 'count'?<pre>Integer i=0, j=0, count=0\nFor i=1 to 3\n For j=1 to i\n  count = count + j\n EndFor\nEndFor\nPrint count</pre>", opts: ["6", "10", "8", "9"], ans: 1 },
+            { id: "P59", section: "Pseudocode", q: "What is the result of the GCD-based recursive call?<pre>Function fun(a, b)\n If(b == 0) Return a\n Return fun(b, a % b)\nEndFunction\nPrint fun(48, 18)</pre>", opts: ["6", "12", "8", "4"], ans: 0 },
+            { id: "P60", section: "Pseudocode", q: "What will be the final concatenated output value?<pre>Integer x=7, y=3\nx = x + y\ny = x - y\nx = x - y\nPrint x * 10 + y</pre>", opts: ["73", "37", "10", "4"], ans: 1 },
+            { id: "P61", section: "Pseudocode", q: "Which character label is printed based on the nested logic?<pre>Integer a=10, b=20, c=30\nIf(a < b)\n If(b < c) Print 'A'\n Else Print 'B'\nElse Print 'C'</pre>", opts: ["A", "B", "C", "None"], ans: 0 },
+            { id: "P62", section: "Pseudocode", q: "What is the output of the bitwise XOR operation?<pre>Integer a=12, b=10\nPrint a ^ b</pre>", opts: ["2", "6", "22", "0"], ans: 1 },
+            { id: "P63", section: "Pseudocode", q: "What is the final sum 's' of the odd array elements?<pre>Integer arr[]={1,2,3,4,5}, s=0\nFor i=0 to 4\n If(arr[i] % 2 != 0) s = s + arr[i]\nEndFor\nPrint s</pre>", opts: ["6", "9", "15", "10"], ans: 1 },
+            { id: "P64", section: "Pseudocode", q: "What is the factorial result of 'f' for the given n=5?<pre>Integer n=5, f=1\nWhile(n > 1)\n f = f * n\n n = n - 1\nEndWhile\nPrint f</pre>", opts: ["24", "120", "720", "60"], ans: 1 },
+            { id: "P65", section: "Pseudocode", q: "What is the final value of 'x' printed?<pre>Integer x=5, y=10\nIf(x > 2)\n If(y < 20) x = x + y\n Else x = x - y\nElse x = 0\nPrint x</pre>", opts: ["15", "5", "0", "-5"], ans: 0 },
+            { id: "P66", section: "Pseudocode", q: "What will be the value of 'n' after the do-while loop?<pre>Integer m=10, n=2\nDo\n m = m - 3\n n = n + 1\nWhile(m > 0)\nPrint n</pre>", opts: ["4", "5", "6", "3"], ans: 2 },
+            { id: "P67", section: "Pseudocode", q: "What is the final output of the short-circuiting logic?<pre>Integer a=10, b=0\nIf(b != 0 AND a/b > 1) Print 'Yes'\nElse Print 'No'</pre>", opts: ["Yes", "No", "Error", "None"], ans: 1 },
+            { id: "P68", section: "Pseudocode", q: "What value will 'x' hold after the shift operation?<pre>Integer x=1\nx = x << 3\nPrint x</pre>", opts: ["3", "4", "8", "16"], ans: 2 },
+            { id: "P69", section: "Pseudocode", q: "What is the final value of 's' in the loop?<pre>Integer s=0\nFor i=1 to 5\n s = s + i * i\nEndFor\nPrint s</pre>", opts: ["55", "30", "15", "25"], ans: 0 },
+            { id: "P70", section: "Pseudocode", q: "What will be the output of the addition/subtraction check?<pre>Integer x=10, y=5\nIf(x + y > 10)\n x = x - 5\n y = y + 5\nEndIf\nPrint y</pre>", opts: ["5", "15", "10", "0"], ans: 2 },
+            { id: "P71", section: "Pseudocode", q: "What is the result of the modulus plus division expression?<pre>Integer a=15, b=4\nPrint a % b + a / b</pre>", opts: ["3", "6", "7", "4"], ans: 1 },
+            { id: "P72", section: "Pseudocode", q: "What is the result of the Fibonacci recursive call f(5)?<pre>Function f(n)\n If(n <= 1) Return n\n Return f(n-1) + f(n-2)\nEndFunction\nPrint f(5)</pre>", opts: ["3", "5", "8", "13"], ans: 1 },
+            { id: "P73", section: "Pseudocode", q: "Which boolean label is printed by the expression?<pre>Integer x=1, y=0, z=1\nIf(x AND y OR z) Print 'True'\nElse Print 'False'</pre>", opts: ["True", "False", "1", "0"], ans: 0 },
+            { id: "P74", section: "Pseudocode", q: "What is the final sum 's' after the break condition?<pre>Integer i=0, s=0\nFor i=1 to 10\n If(i == 5) Break\n s = s + i\nEndFor\nPrint s</pre>", opts: ["15", "10", "55", "45"], ans: 1 },
+            { id: "P75", section: "Pseudocode", q: "What will be the result of the out-of-bounds array access check?<pre>Integer a[]={10,20,30}\nPrint a[3]</pre>", opts: ["30", "0", "Error", "10"], ans: 2 },
+            { id: "P76", section: "Pseudocode", q: "Which label is printed based on the string comparison?<pre>String s1='Hi', s2='Bye'\nIf(s1 == s2) Print 'Same'\nElse Print 'Diff'</pre>", opts: ["Same", "Diff", "Error", "None"], ans: 1 },
+            { id: "P77", section: "Pseudocode", q: "What is the result of the negative modulus operation?<pre>Integer x=-5, y=2\nPrint x % y</pre>", opts: ["-1", "1", "0", "2"], ans: 0 },
+            { id: "P78", section: "Pseudocode", q: "What is the sequence of values printed by the while loop logic?<pre>Integer i=5\nWhile(i > 0)\n i = i - 1\n If(i == 3) Continue\n Print i\nEndWhile</pre>", opts: ["4 2 1 0", "4 3 2 1", "5 4 2 1", "4 3 2 1 0"], ans: 0 },
+            { id: "P79", section: "Pseudocode", q: "What is the numerical output of this multi-operator expression?<pre>Integer a=10, b=5, c=2\nPrint a + b * c - a / b</pre>", opts: ["18", "28", "8", "12"], ans: 0 },
+            { id: "P80", section: "Pseudocode", q: "What is the final value of 'result' in this power loop?<pre>Integer result=1, base=2, exp=3\nFor i=1 to exp\n result = result * base\nEndFor\nPrint result</pre>", opts: ["6", "8", "9", "5"], ans: 1 },
+            { id: "P81", section: "Pseudocode", q: "What is the result of the bitwise OR operation (5 | 3)?<pre>Integer a=5, b=3\nPrint a | b</pre>", opts: ["7", "8", "2", "15"], ans: 0 },
+            { id: "P82", section: "Pseudocode", q: "What will happen during the execution of the recursive function recurse(5)?<pre>Function recurse(n)\n If(n == 0) Return 1\n Return n * recurse(n)\nEndFunction\nPrint recurse(5)</pre>", opts: ["120", "5", "0", "Error"], ans: 3 },
+            { id: "P83", section: "Pseudocode", q: "What is the final value of 'k' in the nested loop summation?<pre>Integer i, j, k=0\nFor i=1 to 2\n For j=1 to 2\n  k = k + i + j\n EndFor\nEndFor\nPrint k</pre>", opts: ["10", "12", "6", "8"], ans: 1 },
+            { id: "P84", section: "Pseudocode", q: "What is the output of the multi-branch condition?<pre>Integer x=10\nIf(x > 5)\n x = x + 5\nElse if(x > 10)\n x = x + 10\nEndIf\nPrint x</pre>", opts: ["15", "25", "20", "10"], ans: 0 },
+            { id: "P85", section: "Pseudocode", q: "After the bitwise XOR swap logic, what is the value of 'a'?<pre>Integer a=1, b=2\na = a ^ b\nb = a ^ b\na = a ^ b\nPrint a</pre>", opts: ["1", "2", "3", "0"], ans: 1 },
+            { id: "P86", section: "Pseudocode", q: "What will be printed as the result of the float cast and division?<pre>Integer x=7, y=2\nFloat z = x / y\nPrint z</pre>", opts: ["3.5", "3.0", "3", "Error"], ans: 1 },
+            { id: "P87", section: "Pseudocode", q: "What is the result of the McCarthy 91 function call f(95)?<pre>Function f(x)\n If(x > 100) Return x - 10\n Return f(f(x + 11))\nEndFunction\nPrint f(95)</pre>", opts: ["91", "100", "85", "95"], ans: 0 },
+            { id: "P88", section: "Pseudocode", q: "What is the final value of 'x' after pointer manipulation?<pre>Integer x=10, *p\np = &x\n*p = 20\nPrint x</pre>", opts: ["10", "20", "Address", "Error"], ans: 1 },
+            { id: "P89", section: "Pseudocode", q: "What is the total count of even numbers in a 1 to 10 range sequence?<pre>Integer i, count=0\nFor i=1 to 10\n If(i % 2 == 0) count++\nEndFor\nPrint count</pre>", opts: ["5", "4", "6", "10"], ans: 0 },
+            { id: "P90", section: "Pseudocode", q: "What is the result of the boolean logical expression (True AND False OR True)?<pre>Boolean a=True, b=False, c=True\nPrint a AND b OR c</pre>", opts: ["True", "False", "1", "0"], ans: 0 },
+            { id: "P91", section: "Pseudocode", q: "What is the value created by shifting 10 left by the result of 10/3?<pre>Integer a=10, b=3\nPrint a << (a/b)</pre>", opts: ["40", "80", "20", "60"], ans: 1 },
+            { id: "P92", section: "Pseudocode", q: "What is the value returned by two successive calls to the static variable function?<pre>Function test()\n Static x = 0\n x = x + 1\n Return x\nEndFunction\nPrint test() + test()</pre>", opts: ["2", "3", "4", "1"], ans: 1 },
+            { id: "P93", section: "Pseudocode", q: "What is the final value of a[3] after the array reassignments?<pre>Integer a[]={1,2,3,4}\na[0] = a[3]\na[3] = a[0]\nPrint a[3]</pre>", opts: ["1", "4", "3", "0"], ans: 1 },
+            { id: "P94", section: "Pseudocode", q: "What will be the output of string concatenation for '1' and '2'?<pre>String a='1', b='2'\nPrint a + b</pre>", opts: ["3", "12", "Error", "None"], ans: 1 },
+            { id: "P95", section: "Pseudocode", q: "What is the result of the bitwise NOT operation on 0?<pre>Integer x=0\nPrint ~x</pre>", opts: ["0", "1", "-1", "Error"], ans: 2 },
+            { id: "P96", section: "Pseudocode", q: "What is the value of 'x' printed after the function call?<pre>Integer x=10\nFunction sub()\n x = 20\nEndFunction\nsub()\nPrint x</pre>", opts: ["10", "20", "Error", "0"], ans: 1 },
+            { id: "P97", section: "Pseudocode", q: "Which label is printed based on the complex logical condition?<pre>Integer x=5, y=10, z=15\nIf(x < y AND y < z OR x > z) Print 'Yes'\nElse Print 'No'</pre>", opts: ["Yes", "No", "True", "False"], ans: 0 },
+            { id: "P98", section: "Pseudocode", q: "What is the final sum 's' of the loop using a step increment of 2?<pre>Integer s=0\nFor i=1 to 10 step 2\n s = s + i\nEndFor\nPrint s</pre>", opts: ["25", "30", "55", "20"], ans: 0 },
+            { id: "P99", section: "Pseudocode", q: "What occurs when calculating the modulus of 10 by 0?<pre>Integer x=10, y=0\nPrint x % y</pre>", opts: ["0", "10", "Error", "Infinity"], ans: 2 },
+            { id: "P100", section: "Pseudocode", q: "What is the final value of 'a' in this swapping loop sequence?<pre>Integer a=1, b=2\nFor i=1 to 3\n a = a + b\n b = a - b\n a = a - b\nEndFor\nPrint a</pre>", opts: ["1", "2", "3", "0"], ans: 1 },
+            { id: "P101", section: "Pseudocode", q: "What is the result of the bitwise AND operation (7 & 4)?<pre>Integer a=7, b=4\nPrint a & b</pre>", opts: ["4", "7", "0", "3"], ans: 0 },
+            { id: "P102", section: "Pseudocode", q: "What is the final value of 'x' after the switch statement execution?<pre>Integer x=2\nSwitch(x)\n Case 1: x = x + 1\n Case 2: x = x + 2\n Case 3: x = x + 3\nEndSwitch\nPrint x</pre>", opts: ["4", "7", "2", "Error"], ans: 1 },
+            { id: "P103", section: "Pseudocode", q: "What is the result when shifting 10 left by 2 positions?<pre>Integer i=10\nPrint i << 2</pre>", opts: ["20", "40", "5", "80"], ans: 1 },
+            { id: "P104", section: "Pseudocode", q: "What is the result of the logic gate (NOT (1 AND 0))?<pre>Integer a=1, b=0\nPrint NOT(a AND b)</pre>", opts: ["0", "True", "False", "1"], ans: 3 },
+            { id: "P105", section: "Pseudocode", q: "What is the output of length(a) for the given array?<pre>Integer a[]={1,2,3}\nPrint length(a)</pre>", opts: ["2", "4", "Error", "3"], ans: 3 },
+            { id: "P106", section: "Pseudocode", q: "What is the result of the summation sum(3)?<pre>Function sum(n)\n If(n == 0) Return 0\n Return n + sum(n-1)\nEndFunction\nPrint sum(3)</pre>", opts: ["3", "5", "0", "6"], ans: 3 },
+            { id: "P107", section: "Pseudocode", q: "What is the result of the bitwise AND operation (12 & 5)?<pre>Integer x=12, y=5\nPrint x & y</pre>", opts: ["0", "17", "12", "4"], ans: 3 },
+            { id: "P108", section: "Pseudocode", q: "What is the result of adding 5 to the hexadecimal value 0xA?<pre>Integer x = 0xA\nPrint x + 5</pre>", opts: ["10", "A5", "Error", "15"], ans: 3 },
+            { id: "P109", section: "Pseudocode", q: "What will be the value of 'i' when the infinite loop breaks at 100?<pre>Integer i=1\nWhile(i > 0)\n i++\n If(i == 100) Break\nEndWhile\nPrint i</pre>", opts: ["99", "Infinite", "0", "100"], ans: 3 },
+            { id: "P110", section: "Pseudocode", q: "What is the value of 5 shifted left by 2?<pre>Integer a=5\nPrint a << 2</pre>", opts: ["10", "25", "15", "20"], ans: 3 },
+            { id: "P111", section: "Pseudocode", q: "What is the expected output when dividing 10 by 0?<pre>Integer a=10, b=0\nInteger c = a / b\nPrint c</pre>", opts: ["0", "10", "Error", "Infinity"], ans: 2 },
+            { id: "P112", section: "Pseudocode", q: "What is the result of the ternary operation (10 > 20) ? 10 : 20?<pre>Integer x=10, y=20\nInteger z = (x > y) ? x : y\nPrint z</pre>", opts: ["10", "30", "20", "0"], ans: 2 },
+            { id: "P113", section: "Pseudocode", q: "What is the final value of a[0] after the array pointer assignment?<pre>Integer a[]={1,2}\nInteger b[] = a\nb[0] = 5\nPrint a[0]</pre>", opts: ["1", "Error", "5", "None"], ans: 2 },
+            { id: "P114", section: "Pseudocode", q: "What is the result of length(s) for the string 'Hello'?<pre>String s = 'Hello'\nPrint length(s)</pre>", opts: ["4", "6", "5", "Error"], ans: 2 },
+            { id: "P115", section: "Pseudocode", q: "What is the cumulative result of x++ + ++x given x=5?<pre>Integer x=5\nPrint x++ + ++x</pre>", opts: ["10", "11", "12", "13"], ans: 2 },
+            { id: "P116", section: "Pseudocode", q: "What is the result of the bitwise XOR operation (10 ^ 10)?<pre>Integer x=10, y=10\nPrint x ^ y</pre>", opts: ["20", "1", "0", "10"], ans: 2 },
+            { id: "P117", section: "Pseudocode", q: "What is the result of adding 1 to the character 'A'?<pre>Char c = 'A'\nPrint c + 1</pre>", opts: ["B", "A1", "66", "Error"], ans: 2 },
+            { id: "P118", section: "Pseudocode", q: "What is the expected result of 1.1 + 2.2 in a standard float addition?<pre>Float x = 1.1, y = 2.2\nPrint x + y</pre>", opts: ["3.3", "3", "3.3000001", "Error"], ans: 2 },
+            { id: "P119", section: "Pseudocode", q: "What is the result of the double logical negation (NOT NOT False)?<pre>Boolean b = False\nPrint NOT NOT b</pre>", opts: ["True", "1", "False", "0"], ans: 2 },
+            { id: "P120", section: "Pseudocode", q: "What is printed when the address operator '&' is applied to x?<pre>Integer x=5\nPrint &x</pre>", opts: ["5", "Error", "Address", "0"], ans: 2 },
+            { id: "P121", section: "Pseudocode", q: "What is the result of 16 shifted right by 3?<pre>Integer x=16\nPrint x >> 3</pre>", opts: ["4", "8", "2", "0"], ans: 2 },
+            { id: "P122", section: "Pseudocode", q: "What is the final increment count of the nested loops?<pre>Integer count=0\nFor i=1 to 3\n For j=1 to 2\n  count++\nPrint count</pre>", opts: ["5", "9", "6", "4"], ans: 2 },
+            { id: "P123", section: "Pseudocode", q: "What is the result of the recursive power call p(3, 2)?<pre>Function p(a, b)\n If(b == 0) Return 1\n Return a * p(a, b-1)\nEndFunction\nPrint p(3, 2)</pre>", opts: ["6", "8", "9", "5"], ans: 2 },
+            { id: "P124", section: "Pseudocode", q: "Which label is printed based on the condition check?<pre>Integer x=5\nIf(x < 5) Print 'A'\nElse if(x == 5) Print 'B'\nElse Print 'C'</pre>", opts: ["A", "C", "B", "None"], ans: 2 },
+            { id: "P125", section: "Pseudocode", q: "What is the result of the expression x - (x/y)*y for x=10, y=3?<pre>Integer x=10, y=3\nPrint x - (x/y)*y</pre>", opts: ["3", "0", "1", "10"], ans: 2 },
+            { id: "P126", section: "Pseudocode", q: "What is the value of b[0] after the array reversal logic?<pre>Integer a[]={1,2,3}, b[3]\nFor i=0 to 2\n b[i] = a[2-i]\nPrint b[0]</pre>", opts: ["1", "2", "3", "0"], ans: 2 },
+            { id: "P127", section: "Pseudocode", q: "What is the result of the bitwise OR operation (1 | 2)?<pre>Integer x=1, y=2\nPrint x | y</pre>", opts: ["1", "2", "3", "0"], ans: 2 },
+            { id: "P128", section: "Pseudocode", q: "What is the result of comparing 'abc' to 'ABC'?<pre>String a='abc', b='ABC'\nIf(a == b) Print '1'\nElse Print '0'</pre>", opts: ["1", "Error", "None", "0"], ans: 3 },
+            { id: "P129", section: "Pseudocode", q: "What happens when entering a false while condition initially?<pre>Integer i=0\nWhile(i > 0)\n i++\nEndWhile\nPrint i</pre>", opts: ["1", "Infinite", "Error", "0"], ans: 3 },
+            { id: "P130", section: "Pseudocode", q: "What value is returned by the nested function call add(add(1, 2), 3)?<pre>Function add(a, b)\n Return a + b\nEndFunction\nPrint add(add(1, 2), 3)</pre>", opts: ["3", "5", "4", "6"], ans: 3 },
+            { id: "P131", section: "Pseudocode", q: "What is the result of the bitwise NOT operation on 1?<pre>Integer x=1\nPrint ~x</pre>", opts: ["0", "2", "Error", "-2"], ans: 3 },
+            { id: "P132", section: "Pseudocode", q: "What occurs when accessing an array out of its declared bounds?<pre>Integer a[2]\na[2] = 10\nPrint a[2]</pre>", opts: ["10", "0", "None", "Error"], ans: 3 },
+            { id: "P133", section: "Pseudocode", q: "What is the result of the recursive factorial call fact(4)?<pre>Function fact(n)\n If(n == 0) Return 1\n Return n * fact(n-1)\nEndFunction\nPrint fact(4)</pre>", opts: ["12", "6", "120", "24"], ans: 3 },
+            { id: "P134", section: "Pseudocode", q: "What is the boolean result of (True XOR True)?<pre>Boolean a=True, b=True\nPrint a XOR b</pre>", opts: ["True", "1", "0", "False"], ans: 3 },
+            { id: "P135", section: "Pseudocode", q: "What is the floating point division result of 5 / 2.0?<pre>Float x = 5 / 2.0\nPrint x</pre>", opts: ["2", "3", "Error", "2.5"], ans: 3 },
+            { id: "P136", section: "Pseudocode", q: "What is the character at index 1 for the string 'Hello'?<pre>String s = 'Hello'\nPrint s[1]</pre>", opts: ["H", "l", "Error", "e"], ans: 3 },
+            { id: "P137", section: "Pseudocode", q: "Which value of 'x' is printed after the function call scoping check?<pre>Integer x=5\nFunction f()\n Integer x=10\nEndFunction\nf()\nPrint x</pre>", opts: ["10", "Error", "0", "5"], ans: 3 },
+            { id: "P138", section: "Pseudocode", q: "What is the result of 8 shifted right by 2?<pre>Integer x=8\nPrint x >> 2</pre>", opts: ["4", "1", "0", "2"], ans: 3 },
+            { id: "P139", section: "Pseudocode", q: "What is the final value of 'x' after the switch default branch?<pre>Integer x=5\nSwitch(x)\n Case 1: x=1\n Default: x=0\nEndSwitch\nPrint x</pre>", opts: ["5", "1", "Error", "0"], ans: 3 },
+            { id: "P140", section: "Pseudocode", q: "What is the result of boolean priority of OR vs AND?<pre>Print True OR False AND False</pre>", opts: ["False", "1", "0", "True"], ans: 3 },
+            { id: "P141", section: "Pseudocode", q: "What is the final sum 's' for multiples of both 7 and 5 in range 1-100?<pre>Integer i, s=0\nFor i=1 to 100\n If(i % 7 == 0 AND i % 5 == 0) s = s + i\nEndFor\nPrint s</pre>", opts: ["35", "70", "140", "105"], ans: 3 },
+            { id: "P142", section: "Pseudocode", q: "What is the result of the Ackermann function call ack(2, 1)?<pre>Function ack(m, n)\n If(m == 0) Return n + 1\n If(n == 0) Return ack(m-1, 1)\n Return ack(m-1, ack(m, n-1))\nEndFunction\nPrint ack(2, 1)</pre>", opts: ["3", "7", "Error", "5"], ans: 3 },
+            { id: "P143", section: "Pseudocode", q: "What is the final increment count of the three-level nested loops?<pre>Integer count=0\nFor i=1 to 10\n For j=1 to i\n  For k=1 to j\n   count++\nPrint count</pre>", opts: ["165", "120", "286", "220"], ans: 3 },
+            { id: "P144", section: "Pseudocode", q: "What is the sum of (x + y) after the bitwise XOR swap logic?<pre>Integer x=5, y=10\nx = x ^ y; y = x ^ y; x = x ^ y\nPrint x + y</pre>", opts: ["5", "10", "20", "15"], ans: 3 },
+            { id: "P145", section: "Pseudocode", q: "What label is printed when a division by zero is caught?<pre>Integer a=10, b=0\nTry\n Print a/b\nCatch\n Print 'Error'\nEndTry</pre>", opts: ["0", "Infinity", "10", "Error"], ans: 3 },
+            { id: "P146", section: "Pseudocode", q: "What is the final sum 's' of the loop with a negative step -2?<pre>Integer s=0\nFor i=10 to 1 step -2\n s = s + i\nEndFor\nPrint s</pre>", opts: ["20", "10", "40", "30"], ans: 3 },
+            { id: "P147", section: "Pseudocode", q: "What is the value of the 2D array element a[1][0]?<pre>Integer a[2][2]={{1,2},{3,4}}\nPrint a[1][0]</pre>", opts: ["1", "2", "4", "3"], ans: 3 },
+            { id: "P148", section: "Pseudocode", q: "What is the value found at the pointer offset (p+1)?<pre>Integer a[]={10,20,30}, *p=a\nPrint *(p+1)</pre>", opts: ["10", "30", "Error", "20"], ans: 3 },
+            { id: "P149", section: "Pseudocode", q: "What happens during the execution of an infinite recursive function?<pre>Function f(n)\n Return f(n-1)\nEndFunction\nPrint f(5)</pre>", opts: ["0", "5", "Infinite", "Error"], ans: 3 },
+            { id: "P151", section: "Pseudocode", q: "What is the final value of 'a' after the if-else calculation?<pre>Integer a=10, b=5\nIf (a > b) a = a / b\nElse a = a * b\nPrint a</pre>", opts: ["2", "50", "15", "5"], ans: 0 },
+            { id: "P152", section: "Pseudocode", q: "What is the final sum calculated by the loop?<pre>Integer sum=0\nFor i=1 to 4\n  sum = sum + i\nPrint sum</pre>", opts: ["4", "6", "15", "10"], ans: 3 },
+            { id: "P153", section: "Pseudocode", q: "What will be the final value of 'x' printed?<pre>Integer x=1, i=1\nWhile (i < 3)\n  x = x * 10\n  i = i + 1\nPrint x</pre>", opts: ["10", "1000", "1", "100"], ans: 3 },
+            { id: "P154", section: "Pseudocode", q: "What is the result of the modulus operation (15 % 4)?<pre>Integer p=15, q=4\nPrint p % q</pre>", opts: ["1", "4", "0", "3"], ans: 3 },
+            { id: "P155", section: "Pseudocode", q: "Which value is printed based on the even/odd check?<pre>Integer a=7, b=8\nIf (a % 2 == 0) Print a\nElse Print b</pre>", opts: ["7", "0", "15", "8"], ans: 3 },
+            { id: "P156", section: "Pseudocode", q: "What is the final sequence result of 'res'?<pre>Integer res=1\nFor k=1 to 3\n  res = res + k\nPrint res</pre>", opts: ["6", "4", "1", "7"], ans: 3 },
+            { id: "P157", section: "Pseudocode", q: "What will be the output value of 'x'?<pre>Integer x=20, y=10\nIf (x/y == 2) x = 5\nElse x = 2\nPrint x</pre>", opts: ["20", "2", "10", "5"], ans: 3 },
+            { id: "P158", section: "Pseudocode", q: "What is the final value of 'c' after the squares calculation?<pre>Integer a=3, b=4, c=0\nc = (a * a) + (b * b)\nPrint c</pre>", opts: ["7", "12", "49", "25"], ans: 3 },
+            { id: "P159", section: "Pseudocode", q: "What will the following while loop print?<pre>Integer i=1\nWhile (i <= 2)\n  Print i\n  i = i + 1</pre>", opts: ["1", "2", "1 2 3", "1 2"], ans: 3 },
+            { id: "P160", section: "Pseudocode", q: "What will be the output of the bitwise right shift operation on 10?<pre>Integer val=10\nval = val >> 1\nPrint val</pre>", opts: ["20", "1", "0", "5"], ans: 3 },
+            { id: "P161", section: "Pseudocode", q: "Which label is printed based on the range check condition?<pre>Integer n=12\nIf (n > 10 AND n < 15) Print 'Yes'\nElse Print 'No'</pre>", opts: ["No", "12", "Error", "Yes"], ans: 3 },
+            { id: "P162", section: "Pseudocode", q: "What is the result of 's', the sum of even numbers from 1 to 5?<pre>Integer s=0\nFor i=1 to 5\n  If (i % 2 == 0) s = s + i\nPrint s</pre>", opts: ["15", "2", "4", "6"], ans: 3 },
+            { id: "P163", section: "Pseudocode", q: "What is the final value of 'b' after the sequence of assignments?<pre>Integer a=10, b=20\na = b; b = a\nPrint b</pre>", opts: ["10", "0", "30", "20"], ans: 3 },
+            { id: "P164", section: "Pseudocode", q: "Which label is printed after the inequality check?<pre>Integer x=5\nIf (x != 5) Print 'A'\nElse Print 'B'</pre>", opts: ["A", "5", "None", "B"], ans: 3 },
+            { id: "P165", section: "Pseudocode", q: "What is the value of 2 raised to the power of 3?<pre>Integer m=2, n=3\nPrint m ** n</pre>", opts: ["6", "5", "8", "9"], ans: 2 },
+            { id: "P166", section: "Pseudocode", q: "What is the final sum 's' after the while loop logic?<pre>Integer s=0, i=1\nWhile (i < 4)\n  s = s + i\n  i = i + 2\nPrint s</pre>", opts: ["1", "6", "4", "3"], ans: 2 },
+            { id: "P167", section: "Pseudocode", q: "What is the result of the integer division of 10 by 3?<pre>Integer a=10, b=3\nPrint a / b</pre>", opts: ["3.33", "1", "3", "0"], ans: 2 },
+            { id: "P168", section: "Pseudocode", q: "What is the final value of 'x' printed when the loop completes?<pre>Integer x=0\nFor i=1 to 10\n  x = i\nPrint x</pre>", opts: ["0", "1", "10", "11"], ans: 2 },
+            { id: "P169", section: "Pseudocode", q: "Which label is printed based on the bitwise XOR comparison?<pre>Integer p=2, q=2\nIf (p ^ q == 0) Print 'Zero'\nElse Print 'NonZero'</pre>", opts: ["NonZero", "4", "Zero", "Error"], ans: 2 },
+            { id: "P170", section: "Pseudocode", q: "What is the result of shifting 8 left by 2 positions?<pre>Integer x=8, y=2\nInteger z = x << y\nPrint z</pre>", opts: ["16", "4", "32", "2"], ans: 2 },
+            { id: "P171", section: "Pseudocode", q: "What is the resulting sum of the array access plus 2?<pre>Integer arr[]={5, 10, 15}\nPrint arr[1] + 2</pre>", opts: ["7", "17", "12", "Error"], ans: 2 },
+            { id: "P172", section: "Pseudocode", q: "What will be the final value of 'i' printed after the break?<pre>Integer i=0\nFor i=1 to 5\n  If (i == 3) Break\nPrint i</pre>", opts: ["5", "2", "3", "Error"], ans: 2 },
+            { id: "P173", section: "Pseudocode", q: "Which value is printed based on the comparison of a and b?<pre>Integer a=100, b=200\nIf (a > b) Print a\nElse Print b</pre>", opts: ["100", "300", "200", "0"], ans: 2 },
+            { id: "P174", section: "Pseudocode", q: "What happens to 'x' given it does not enter the while loop?<pre>Integer x=1\nWhile (x < 1)\n  x = x + 1\nPrint x</pre>", opts: ["2", "0", "1", "Error"], ans: 2 },
+            { id: "P175", section: "Pseudocode", q: "What is the final value of 'k' after the multiplication and addition?<pre>Integer k=5\nk = k + (k * 2)\nPrint k</pre>", opts: ["10", "20", "15", "5"], ans: 2 },
+            { id: "P176", section: "Pseudocode", q: "Which label is printed for the boolean multiplication result?<pre>Integer a=1, b=0\nIf (a AND b) Print 'T'\nElse Print 'F'</pre>", opts: ["T", "1", "F", "0"], ans: 2 },
+            { id: "P177", section: "Pseudocode", q: "What is the final value of 'i' after the decrement?<pre>Integer i=10\ni = i - 1\nPrint i</pre>", opts: ["10", "11", "9", "0"], ans: 2 },
+            { id: "P178", section: "Pseudocode", q: "What is the value located at the first index of the array?<pre>Integer arr[]={1, 2, 3}\nPrint arr[0]</pre>", opts: ["0", "2", "1", "Error"], ans: 2 },
+            { id: "P179", section: "Pseudocode", q: "What will be the final value of 's' printed?<pre>Integer s=0\nFor i=1 to 3\n  s = 10\nPrint s</pre>", opts: ["30", "0", "10", "3"], ans: 2 },
+            { id: "P180", section: "Pseudocode", q: "What is the output for a division by zero error in this environment?<pre>Integer x=10, y=0\nPrint x / y</pre>", opts: ["0", "10", "Error", "Infinity"], ans: 2 },
+            { id: "P181", section: "Pseudocode", q: "Which character is printed based on the comparison check?<pre>Integer x=5, y=5\nIf (x >= y) Print 'A'\nElse Print 'B'</pre>", opts: ["A", "B", "None", "5"], ans: 0 },
+            { id: "P182", section: "Pseudocode", q: "What is 2 raised to the power of 3 in this calculation sequence?<pre>Integer r=2\nr = r * r * r\nPrint r</pre>", opts: ["8", "4", "6", "2"], ans: 0 },
+            { id: "P183", section: "Pseudocode", q: "What is the final value of 'c' when the loop condition is no longer met?<pre>Integer c=0\nWhile (c < 5)\n  c = c + 2\nPrint c</pre>", opts: ["6", "4", "5", "0"], ans: 0 },
+            { id: "P184", section: "Pseudocode", q: "Which outcome label is printed for the logical OR check?<pre>Integer a=0, b=1\nIf (a OR b) Print 'Yes'\nElse Print 'No'</pre>", opts: ["Yes", "No", "1", "0"], ans: 0 },
+            { id: "P185", section: "Pseudocode", q: "What will be the output of the modulus operation (10 % 3)?<pre>Integer n=10\nPrint n % 3</pre>", opts: ["1", "3", "0", "3.33"], ans: 0 },
+            { id: "P186", section: "Pseudocode", q: "What is the final value of 'i' after the decrementing while loop?<pre>Integer i=3\nWhile (i > 0)\n  i = i - 1\nPrint i</pre>", opts: ["0", "3", "1", "Error"], ans: 0 },
+            { id: "P187", section: "Pseudocode", q: "What will be the final value of 'x' printed?<pre>Integer x=10, y=20\nx = x + y\nPrint x</pre>", opts: ["30", "10", "20", "0"], ans: 0 },
+            { id: "P188", section: "Pseudocode", q: "What value of 'a' results from multiplication by zero?<pre>Integer a=5\na = a * 0\nPrint a</pre>", opts: ["0", "5", "1", "Error"], ans: 0 },
+            { id: "P189", section: "Pseudocode", q: "What is the total sum of the three array elements?<pre>Integer a[]={1, 1, 1}\nPrint a[0]+a[1]+a[2]</pre>", opts: ["3", "1", "2", "0"], ans: 0 },
+            { id: "P190", section: "Pseudocode", q: "What is the final value of 'i' printed after the condition check?<pre>Integer i=5\nIf (i == 5) i = i + 1\nPrint i</pre>", opts: ["6", "5", "4", "0"], ans: 0 },
+            { id: "P191", section: "Pseudocode", q: "What is the output of the bitwise AND operation (1 & 0)?<pre>Integer x=1, y=0\nPrint x & y</pre>", opts: ["0", "1", "True", "False"], ans: 0 },
+            { id: "P192", section: "Pseudocode", q: "What will be the final value of 'y' calculated in the loop?<pre>Integer y=2\nFor i=1 to 2\n  y = y + i\nPrint y</pre>", opts: ["5", "3", "4", "2"], ans: 0 },
+            { id: "P193", section: "Pseudocode", q: "What is the result of the logical NOT operation on True?<pre>Boolean b=True\nPrint NOT b</pre>", opts: ["False", "True", "1", "0"], ans: 0 },
+            { id: "P194", section: "Pseudocode", q: "What is the result of the mathematical expression calculation below?<pre>Integer a=4, b=2\nPrint a / b * 2</pre>", opts: ["4", "1", "2", "8"], ans: 0 },
+            { id: "P195", section: "Pseudocode", q: "What will be the output value of 'z'?<pre>Integer x=10, y=5, z=0\nz = x - y\nPrint z</pre>", opts: ["5", "15", "10", "0"], ans: 0 },
+            { id: "P196", section: "Pseudocode", q: "What is the final output of the while loop logic?<pre>Integer i=0\nWhile (i < 0)\n  i = 5\nPrint i</pre>", opts: ["0", "5", "Error", "Infinite"], ans: 0 },
+            { id: "P197", section: "Pseudocode", q: "What is the final value of 'a' calculated?<pre>Integer a=10\na = a + 5\na = a - 10\nPrint a</pre>", opts: ["5", "15", "10", "0"], ans: 0 },
+            { id: "P198", section: "Pseudocode", q: "Is the number '4' even or odd based on the output of this code?<pre>Integer n=4\nIf (n % 2 == 0) Print 'Even'\nElse Print 'Odd'</pre>", opts: ["Even", "Odd", "4", "0"], ans: 0 },
+            { id: "P199", section: "Pseudocode", q: "What is the final value of 's' printed?<pre>Integer s=0\nFor i=1 to 2\n  s = s + 10\nPrint s</pre>", opts: ["20", "10", "30", "0"], ans: 0 },
+            { id: "P200", section: "Pseudocode", q: "Wait, actually, what is the result of x + y * 0?<pre>Integer x=1, y=2\nPrint x + y * 0</pre>", opts: ["1", "0", "2", "3"], ans: 0 }
+        ];
+
+        const s2 = [
+            { id: "N1", section: "Networking", q: "Which protocol is primarily used for sending email between servers?", opts: ["SMTP", "POP3", "IMAP", "HTTP"], ans: 0 },
+            { id: "N2", section: "Networking", q: "What is the standard port number for unencrypted web traffic (HTTP)?", opts: ["443", "80", "21", "22"], ans: 1 },
+            { id: "N3", section: "Networking", q: "Which networking hardware is used to direct traffic between different networks?", opts: ["Switch", "Bridge", "Router", "Hub"], ans: 2 },
+            { id: "N4", section: "Networking", q: "What does the abbreviation DHCP stand for?", opts: ["Data Hub Protocol", "Direct Host Communication", "Digital Hardware Configuration", "Dynamic Host Configuration Protocol"], ans: 3 },
+            { id: "N5", section: "Networking", q: "Which device is used to connect multiple devices on a single local network (LAN)?", opts: ["Switch", "Router", "Modem", "Gateway"], ans: 0 },
+            { id: "N6", section: "Networking", q: "What is the length (in bits) of a standard IPv6 address?", opts: ["32 bits", "128 bits", "64 bits", "48 bits"], ans: 1 },
+            { id: "N7", section: "Networking", q: "Which protocol maps an IP address to a physical MAC address?", opts: ["DNS", "DHCP", "ARP", "RARP"], ans: 2 },
+            { id: "N8", section: "Networking", q: "What is the default port used for secure web browsing (HTTPS)?", opts: ["80", "25", "110", "443"], ans: 3 },
+            { id: "N9", section: "Networking", q: "Which OSI layer is responsible for reliable process-to-process delivery?", opts: ["Transport", "Network", "Data Link", "Session"], ans: 0 },
+            { id: "N10", section: "Networking", q: "Which network topology connects every node to a central hub?", opts: ["Mesh", "Star", "Bus", "Ring"], ans: 1 },
+            { id: "N11", section: "Networking", q: "Which transport protocol is 'connectionless' and often used for streaming?", opts: ["TCP", "HTTP", "UDP", "FTP"], ans: 2 },
+            { id: "N12", section: "Networking", q: "On which port does the File Transfer Protocol (FTP) handle control commands?", opts: ["23", "80", "25", "21"], ans: 3 },
+            { id: "N13", section: "Networking", q: "Which OSI layer handles hardware addressing (MAC addresses)?", opts: ["Data Link", "Physical", "Network", "Presentation"], ans: 0 },
+            { id: "N14", section: "Networking", q: "What is the primary function of the Domain Name System (DNS)?", opts: ["IP to MAC mapping", "Hostname to IP resolution", "Email forwarding", "File sharing"], ans: 1 },
+            { id: "N15", section: "Networking", q: "What is the CIDR prefix for a standard Class C subnet mask (255.255.255.0)?", opts: ["/16", "/8", "/24", "/32"], ans: 2 },
+            { id: "N16", section: "Networking", q: "Which command-line utility tests the reachability of a host over a network?", opts: ["ipconfig", "netstat", "route", "ping"], ans: 3 },
+            { id: "N17", section: "Networking", q: "Which of these is a valid private IP address range for a local network?", opts: ["192.168.0.0/16", "8.8.8.8", "1.1.1.1", "172.64.0.0"], ans: 0 },
+            { id: "N18", section: "Networking", q: "Which protocol uses a 'Three-Way Handshake' to establish a session?", opts: ["UDP", "TCP", "ICMP", "ARP"], ans: 1 },
+            { id: "N19", section: "Networking", q: "Which OSI layer deals with bit-level transmission across cables?", opts: ["Application", "Network", "Physical", "Data Link"], ans: 2 },
+            { id: "N20", section: "Networking", q: "Which device broadcasts data to all ports, potentially causing network collisions?", opts: ["Router", "Bridge", "Switch", "Hub"], ans: 3 },
+            { id: "N21", section: "Networking", q: "Which secure protocol is used for encrypted remote terminal access?", opts: ["SSH", "Telnet", "HTTP", "FTP"], ans: 0 },
+            { id: "N22", section: "Networking", q: "What is the standard port for the Telnet service?", opts: ["22", "23", "80", "443"], ans: 1 },
+            { id: "N23", section: "Networking", q: "Which OSI layer handles data encryption and compression?", opts: ["Session", "Application", "Presentation", "Network"], ans: 2 },
+            { id: "N24", section: "Networking", q: "What is the size (in bits) of an IPv4 address?", opts: ["128 bits", "64 bits", "48 bits", "32 bits"], ans: 3 },
+            { id: "N25", section: "Networking", q: "Which protocol is used to synchronize the time on network devices?", opts: ["NTP", "DNS", "DHCP", "FTP"], ans: 0 },
+            { id: "N26", section: "Networking", q: "Which protocol is used by tools like 'ping' for status messages?", opts: ["TCP", "ICMP", "UDP", "ARP"], ans: 1 },
+            { id: "N27", section: "Networking", q: "What is the topmost layer (Layer 7) of the OSI model?", opts: ["Physical", "Transport", "Application", "Presentation"], ans: 2 },
+            { id: "N28", section: "Networking", q: "Which type of copper cabling is most common for modern Ethernet LANs?", opts: ["Fiber Optic", "Coaxial", "Serial", "Twisted Pair"], ans: 3 },
+            { id: "N29", section: "Networking", q: "What is the broadcast address for a local network segment?", opts: ["255.255.255.255", "0.0.0.0", "127.0.0.1", "192.168.1.1"], ans: 0 },
+            { id: "N30", section: "Networking", q: "What is the primary purpose of Network Address Translation (NAT)?", opts: ["Hostname Resolution", "Private to Public IP Mapping", "MAC Address Filtering", "Traffic Encryption"], ans: 1 },
+            { id: "N31", section: "Networking", q: "Which OSI layer manages and maintains dialogue between applications?", opts: ["Transport", "Network", "Session", "Data Link"], ans: 2 },
+            { id: "N32", section: "Networking", q: "Which protocol is primarily used by web browsers to request web pages?", opts: ["FTP", "SMTP", "SNMP", "HTTP"], ans: 3 },
+            { id: "N33", section: "Networking", q: "On which port does the SNMP agent typically listen for requests?", opts: ["161", "162", "53", "67"], ans: 0 },
+            { id: "N34", section: "Networking", q: "Which protocol is used for managing and monitoring network devices?", opts: ["SMTP", "SNMP", "SSH", "Telnet"], ans: 1 },
+            { id: "N35", section: "Networking", q: "Which IP address represents the standard 'Loopback' or local host?", opts: ["192.168.1.1", "0.0.0.0", "127.0.0.1", "1.1.1.1"], ans: 2 },
+            { id: "N36", section: "Networking", q: "What is the typical length (in bits) of a hardware MAC address?", opts: ["32 bits", "128 bits", "64 bits", "48 bits"], ans: 3 },
+            { id: "N37", section: "Networking", q: "Which device operates at Layer 1 and simply repeats electrical pulses?", opts: ["Hub", "Switch", "Router", "Bridge"], ans: 0 },
+            { id: "N38", section: "Networking", q: "Which network component is used to filter traffic and enhance security?", opts: ["Router", "Firewall", "Bridge", "Server"], ans: 1 },
+            { id: "N39", section: "Networking", q: "Which port is standard for the POP3 protocol used to retrieve emails?", opts: ["143", "25", "110", "80"], ans: 2 },
+            { id: "N40", section: "Networking", q: "Which mechanism in TCP ensures a fast sender does not overwhelm a slow receiver?", opts: ["Routing", "Addressing", "Error Detection", "Flow Control"], ans: 3 }
+        ];
+
+        const s3 = [
+            { id: "O1", section: "Office", q: "Which bar in Excel displays the contents of the active cell?", opts: ["Formula Bar", "Status Bar", "Title Bar", "Scroll Bar"], ans: 0 },
+            { id: "O2", section: "Office", q: "What is the common keyboard shortcut to 'Undo' the last action?", opts: ["Ctrl+Y", "Ctrl+Z", "Ctrl+X", "Ctrl+U"], ans: 1 },
+            { id: "O3", section: "Office", q: "Which view is best for reordering slides in a PowerPoint presentation?", opts: ["Outline View", "Reading View", "Slide Sorter", "Slide Master"], ans: 2 },
+            { id: "O4", section: "Office", q: "What is the standard file extension for Word 2016 documents?", opts: [".rtf", ".doc", ".txt", ".docx"], ans: 3 },
+            { id: "O5", section: "Office", q: "Which key starts a slide show from the first slide in PowerPoint?", opts: ["F5", "Shift+F5", "Ctrl+F5", "Alt+F5"], ans: 0 },
+            { id: "O6", section: "Office", q: "Which function counts the number of characters in an Excel cell?", opts: ["LENGTH", "LEN", "COUNT", "SIZE"], ans: 1 },
+            { id: "O7", section: "Office", q: "Which text alignment touches both the left and right margins evenly?", opts: ["Center", "Left", "Justify", "Right"], ans: 2 },
+            { id: "O8", section: "Office", q: "What is the shortcut to open the 'Find' dialog in Word or Excel?", opts: ["Ctrl+H", "Ctrl+G", "Ctrl+J", "Ctrl+F"], ans: 3 },
+            { id: "O9", section: "Office", q: "Which function combines multiple cell contents into one in Excel?", opts: ["CONCATENATE", "JOIN", "SUM", "COMBINE"], ans: 0 },
+            { id: "O10", section: "Office", q: "What is the shortcut to insert a new slide into a PPT presentation?", opts: ["Ctrl+N", "Ctrl+M", "Ctrl+S", "Ctrl+O"], ans: 1 },
+            { id: "O11", section: "Office", q: "Which function returns only the current date in Excel?", opts: ["NOW()", "DATE()", "TODAY()", "TIME()"], ans: 2 },
+            { id: "O12", section: "Office", q: "Which tool creates multiple personalized documents using a list?", opts: ["Spelling", "Counting", "Tables", "Mail Merge"], ans: 3 },
+            { id: "O13", section: "Office", q: "What is the shortcut key to open the 'Replace' dialog?", opts: ["Ctrl+H", "Ctrl+F", "Ctrl+K", "Ctrl+R"], ans: 0 },
+            { id: "O14", section: "Office", q: "Which feature locks row or column headers while scrolling in Excel?", opts: ["Split", "Freeze Panes", "Filter", "Sort"], ans: 1 },
+            { id: "O15", section: "Office", q: "Which shortcut increases the font size of selected text in Word?", opts: ["Ctrl++", "Ctrl+>", "Ctrl+]", "Alt++"], ans: 2 },
+            { id: "O16", section: "Office", q: "What tool automates repetitive tasks in Excel by recording steps?", opts: ["Security", "Grammar", "Printing", "Macro"], ans: 3 },
+            { id: "O17", section: "Office", q: "Which file extension identify a standard Excel workbook?", opts: [".xlsx", ".xls", ".csv", ".xlsm"], ans: 0 },
+            { id: "O18", section: "Office", q: "On which ribbon tab can you find the option to insert a picture?", opts: ["Home", "Insert", "Data", "Formula"], ans: 1 },
+            { id: "O19", section: "Office", q: "What is the shortcut to insert a hyperlink in Word?", opts: ["Ctrl+L", "Ctrl+H", "Ctrl+K", "Ctrl+P"], ans: 2 },
+            { id: "O20", section: "Office", q: "Which shortcut applies 'Bold' formatting to selected text?", opts: ["Back", "Break", "Blank", "Bold"], ans: 3 },
+            { id: "O21", section: "Office", q: "Which feature shows only rows that meet specific conditions in Excel?", opts: ["Filter", "COUNTA", "COUNTIF", "SUM"], ans: 0 },
+            { id: "O22", section: "Office", q: "What is the primary keyboard shortcut to print a document?", opts: ["Ctrl+O", "Ctrl+P", "Ctrl+S", "Ctrl+L"], ans: 1 },
+            { id: "O23", section: "Office", q: "Which tool sets the layout and background for all slides at once?", opts: ["Animations", "Transitions", "Slide Master", "Slide Sorter"], ans: 2 },
+            { id: "O24", section: "Office", q: "What is the standard file extension for PowerPoint presentations?", opts: [".ppt", ".pps", ".pdf", ".pptx"], ans: 3 },
+            { id: "O25", section: "Office", q: "Which tool arranges data in alphabetical or numerical order in Excel?", opts: ["Sort", "VLOOKUP", "FILTER", "MATCH"], ans: 0 },
+            { id: "O26", section: "Office", q: "What is the shortcut key for the 'Save As' command?", opts: ["Ctrl+S", "F12", "Alt+S", "Shift+S"], ans: 1 },
+            { id: "O27", section: "Office", q: "Which feature suggests synonyms for words in Word?", opts: ["Spelling", "Word Count", "Thesaurus", "Editor"], ans: 2 },
+            { id: "O28", section: "Office", q: "Which key allows you to edit the text inside an active cell?", opts: ["F4", "F1", "F5", "F2"], ans: 3 },
+            { id: "O29", section: "Office", q: "Which key is used to end a slide show in PowerPoint?", opts: ["Esc", "Next", "Prev", "Start"], ans: 0 },
+            { id: "O30", section: "Office", q: "What is the shortcut to select all text in a file?", opts: ["Ctrl+S", "Ctrl+A", "Ctrl+Z", "Ctrl+V"], ans: 1 },
+            { id: "O31", section: "Office", q: "Which function calculates the mean of a range in Excel?", opts: ["MEAN", "SUM", "AVERAGE", "AVG"], ans: 2 },
+            { id: "O32", section: "Office", q: "Which shortcut applies 'Italic' formatting?", opts: ["Indention", "Insert", "Index", "Italic"], ans: 3 },
+            { id: "O33", section: "Office", q: "Which feature adds a faint background text behind a document?", opts: ["Watermark", "Header", "Footer", "Table"], ans: 0 },
+            { id: "O34", section: "Office", q: "Which shortcut creates a completely new, empty document?", opts: ["Ctrl+O", "Ctrl+N", "Ctrl+W", "Ctrl+T"], ans: 1 },
+            { id: "O35", section: "Office", q: "Which Excel function calculates the square root of a value?", opts: ["ROOT", "SQR", "SQRT", "POW"], ans: 2 },
+            { id: "O36", section: "Office", q: "What is the shortcut to 'Cut' selected content to the clipboard?", opts: ["Copy", "Paste", "Delete", "Cut"], ans: 3 },
+            { id: "O37", section: "Office", q: "Which tool copies only the formatting of text to another location?", opts: ["Format Painter", "Draw", "Color", "Edit"], ans: 0 },
+            { id: "O38", section: "Office", q: "Which shortcut starts a slide show from the current slide?", opts: ["F5", "Shift+F5", "Ctrl+F5", "Alt+F5"], ans: 1 },
+            { id: "O39", section: "Office", q: "Which shortcut inserts a SUM function manually in Excel?", opts: ["Alt+S", "Ctrl+S", "Alt+=", "Ctrl+="], ans: 2 },
+            { id: "O40", section: "Office", q: "What is the maximum number of rows in Excel 2016?", opts: ["65,536", "1,000,000", "50,000", "1,048,576"], ans: 3 }
+        ];
+
+        // Function to jumble options while keeping track of the correct answer
+        function jumbleOptions(q) {
+            const correctAnswerText = q.opts[q.ans];
+            // Fisher-Yates shuffle
+            for (let i = q.opts.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [q.opts[i], q.opts[j]] = [q.opts[j], q.opts[i]];
+            }
+            // Update ans index
+            q.ans = q.opts.indexOf(correctAnswerText);
+        }
+
+        // Apply jumbling to Networking and Office questions
+        s2.forEach(jumbleOptions);
+        s3.forEach(jumbleOptions);
+
+        let examSet = [];
+        let p1=[...s1], p2=[...s2], p3=[...s3];
+        for(let i=0; i<15; i++) {
+            examSet.push(p1.splice(Math.floor(Math.random()*p1.length), 1)[0]);
+            examSet.push(p2.splice(Math.floor(Math.random()*p2.length), 1)[0]);
+            examSet.push(p3.splice(Math.floor(Math.random()*p3.length), 1)[0]);
+        }
+
+
+
+let viewSet = [...examSet], currentIdx = 0, userAnswers = {};
+
+function render() {
+    const q = viewSet[currentIdx];
+    document.getElementById('qNumHeading').innerText = `Question ${examSet.indexOf(q) + 1}`;
+    document.getElementById('sectionLabel').innerText = q.section;
+    document.getElementById('qTextDisplay').innerHTML = q.q;
+    
+    const container = document.getElementById('optionsContainer');
+    container.innerHTML = `<h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-8">Select one option</h3>`;
+    
+    q.opts.forEach((opt, idx) => {
+        const card = document.createElement('div');
+        card.className = `option-card ${userAnswers[q.id] === idx ? 'selected' : ''}`;
+        card.onclick = () => { 
+            userAnswers[q.id] = idx; 
+            updateStats(); 
+            render(); 
+        };
+        card.innerHTML = `<span class="custom-radio ${userAnswers[q.id] === idx ? 'checked' : ''}"></span><span class="text-gray-700 font-bold">${opt}</span>`;
+        container.appendChild(card);
+    });
+    
+    updatePagination();
+    updateButtonState();
+}
+
+function updateStats() {
+    const count = Object.keys(userAnswers).length;
+    document.getElementById('statsLabel').innerText = `Attempted: ${count}/45`;
+}
+
+function updateButtonState() {
+    const nextBtn = document.getElementById('nextBtn');
+    const count = Object.keys(userAnswers).length;
+    
+    // UPDATE: If all 45 questions are answered, change button to Submit
+    if (count === 45) {
+        nextBtn.innerText = "Submit Test";
+        nextBtn.classList.add('bg-green-600', 'text-white'); 
+    } else {
+        nextBtn.innerText = "Next";
+        nextBtn.classList.remove('bg-green-600', 'text-white');
+    }
+    document.getElementById('prevBtn').disabled = (currentIdx === 0);
+}
+
+function handleAction() {
+    const count = Object.keys(userAnswers).length;
+
+    // UPDATE: Logic to handle click based on completion status
+    if (count === 45) {
+        // If all 45 answered, clicking the button (now "Submit") ends the test
+        submitTest();
+    } else {
+        // If not finished, check if we can move to the next question
+        if (currentIdx < viewSet.length - 1) {
+            changeQuestion(1);
+        }
+    }
+}
+
+function submitTest() {
+    let score = 0;
+    // Calculate score by comparing userAnswers to the examSet keys
+    examSet.forEach(q => { 
+        if(userAnswers[q.id] == q.ans) score++; 
+    });
+    
+    localStorage.setItem("tech_score", score);
+    // Redirect to results page
+    window.location.href = "./timer3.html";
+}
+
+function changeQuestion(dir) { 
+    if (currentIdx + dir >= 0 && currentIdx + dir < viewSet.length) { 
+        currentIdx += dir; 
+        render(); 
+    } 
+}
+
+function updatePagination() {
+    const container = document.getElementById('paginationContainer');
+    container.innerHTML = '';
+    viewSet.forEach((q, i) => {
+        const btn = document.createElement('button');
+        btn.className = `px-3 py-2 border-r border-gray-300 text-xs min-w-[40px] flex-shrink-0 ${viewSet[currentIdx].id === q.id ? 'active-tab' : ''} ${userAnswers[q.id] !== undefined ? 'answered-indicator' : ''}`;
+        btn.innerText = examSet.indexOf(q) + 1;
+        btn.onclick = () => { currentIdx = i; render(); };
+        container.appendChild(btn);
+    });
+}
+
+function applyFilter() {
+    const filter = document.getElementById('sectionFilter').value;
+    viewSet = (filter === "All") ? [...examSet] : examSet.filter(q => q.section === filter);
+    currentIdx = 0; 
+    render();
+}
+
+let time = 2700;
+const timerInterval = setInterval(() => {
+    if(time > 0) {
+        time--;
+        let m = Math.floor(time/60), s = time % 60;
+        document.getElementById('timer').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+    } else { 
+        // UPDATE: Automatically submit when time is up, regardless of answer count
+        clearInterval(timerInterval);
+        submitTest(); 
+    }
+}, 1000);
+
+window.onload = render;
+</script>
+</body>
+</html>
