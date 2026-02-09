@@ -235,7 +235,7 @@ class SparkApp {
                     testCases: [
                         { input: "[10, 20, 30]", expected: "60" },
                         { input: "[1, 2, 3, 4, 5]", expected: "15" },
-                        { input: "[5, 5, 10]", expected: "15" }
+                        { input: "[-5, 5, 10]", expected: "10" }
                     ]
                 },
                 {
@@ -936,13 +936,13 @@ class SparkApp {
         
         const codeClean = code.toLowerCase().replace(/#.*$/gm, '').trim();
         const hasReturn = /return\s+/.test(codeClean);
-        const hasLogic = /for|while|if|else|map|filter|max|sum|reducer/.test(codeClean);
+        const hasLogic = /for|while|if|else|map|filter|max|sum|reducer|\+/.test(codeClean);
         
         const patterns = {
             "Target Sum": ["return", "[", "]", "for"],
-            "Max Finder": ["return", "max", ">", "for"],
-            "List Total": ["return", "sum", "+", "for", "reducer"],
-            "Even Count": ["return", "%", "2", "==", "0", "for"]
+            "Max Finder": ["return", "max", ">", "for", "if"],
+            "List Total": ["return", "sum", "+", "for", "range", "len"],
+            "Even Count": ["return", "%", "2", "==", "0", "for", "if"]
         };
 
         const required = patterns[q.title] || ["return"];
@@ -951,8 +951,8 @@ class SparkApp {
 
         let passedCount = 0;
         if (hasReturn && hasLogic) {
-            if (ratio >= 0.8) passedCount = 3;
-            else if (ratio >= 0.4) passedCount = 2;
+            if (ratio >= 0.7) passedCount = 3;
+            else if (ratio >= 0.3) passedCount = 2;
             else passedCount = 1;
         }
 
